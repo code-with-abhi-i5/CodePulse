@@ -1,0 +1,183 @@
+import { UsersService } from './users.service';
+import { UpdateUserDto } from './dto/users.dto';
+export declare class UsersController {
+    private readonly usersService;
+    constructor(usersService: UsersService);
+    getProfile(req: any): Promise<{
+        activities: {
+            id: string;
+            userId: string;
+            type: import("@prisma/client").$Enums.ActivityType;
+            title: string;
+            description: string;
+            repository: string | null;
+            metadata: import("@prisma/client/runtime/library").JsonValue | null;
+            createdAt: Date;
+        }[];
+        rating: {
+            id: string;
+            updatedAt: Date;
+            userId: string;
+            overall: number;
+            level: number;
+            xp: number;
+            xpToNextLevel: number;
+            rank: number;
+            totalDevelopers: number;
+            tier: import("@prisma/client").$Enums.Tier;
+            growthScore: number;
+        } | null;
+        stats: {
+            id: string;
+            updatedAt: Date;
+            following: number;
+            followers: number;
+            userId: string;
+            totalCommits: number;
+            totalPRs: number;
+            totalIssues: number;
+            totalReviews: number;
+            totalStars: number;
+            totalForks: number;
+            totalRepos: number;
+            contributions: number;
+            streak: number;
+            longestStreak: number;
+            avgCommitsPerDay: number;
+            activeDays: number;
+            contributionData: import("@prisma/client/runtime/library").JsonValue | null;
+            commitActivity: import("@prisma/client/runtime/library").JsonValue | null;
+        } | null;
+        languages: {
+            id: string;
+            name: string;
+            userId: string;
+            color: string | null;
+            percentage: number;
+            linesOfCode: number;
+            repos: number;
+        }[];
+        repositories: {
+            id: string;
+            name: string;
+            updatedAt: Date;
+            userId: string;
+            description: string | null;
+            createdAt: Date;
+            githubRepoId: string;
+            fullName: string;
+            language: string | null;
+            languageColor: string | null;
+            stars: number;
+            forks: number;
+            watchers: number;
+            issues: number;
+            pullRequests: number;
+            commits: number;
+            contributors: number;
+            size: number;
+            topics: string[];
+            isPrivate: boolean;
+            url: string;
+            repoCreatedAt: Date;
+            repoUpdatedAt: Date;
+        }[];
+        badges: ({
+            badge: {
+                id: string;
+                name: string;
+                description: string;
+                tier: import("@prisma/client").$Enums.BadgeTier;
+                icon: string | null;
+                category: string | null;
+            };
+        } & {
+            id: string;
+            userId: string;
+            badgeId: string;
+            earnedAt: Date;
+        })[];
+    } & {
+        id: string;
+        githubId: string;
+        username: string;
+        name: string | null;
+        avatar: string | null;
+        bio: string | null;
+        location: string | null;
+        company: string | null;
+        website: string | null;
+        githubUrl: string | null;
+        isOnline: boolean;
+        joinedAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }>;
+    getPublicProfile(username: string): Promise<{
+        rating: {
+            id: string;
+            updatedAt: Date;
+            userId: string;
+            overall: number;
+            level: number;
+            xp: number;
+            xpToNextLevel: number;
+            rank: number;
+            totalDevelopers: number;
+            tier: import("@prisma/client").$Enums.Tier;
+            growthScore: number;
+        } | null;
+        stats: {
+            id: string;
+            updatedAt: Date;
+            following: number;
+            followers: number;
+            userId: string;
+            totalCommits: number;
+            totalPRs: number;
+            totalIssues: number;
+            totalReviews: number;
+            totalStars: number;
+            totalForks: number;
+            totalRepos: number;
+            contributions: number;
+            streak: number;
+            longestStreak: number;
+            avgCommitsPerDay: number;
+            activeDays: number;
+            contributionData: import("@prisma/client/runtime/library").JsonValue | null;
+            commitActivity: import("@prisma/client/runtime/library").JsonValue | null;
+        } | null;
+    } & {
+        id: string;
+        githubId: string;
+        username: string;
+        name: string | null;
+        avatar: string | null;
+        bio: string | null;
+        location: string | null;
+        company: string | null;
+        website: string | null;
+        githubUrl: string | null;
+        isOnline: boolean;
+        joinedAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }>;
+    updateProfile(req: any, updateDto: UpdateUserDto): Promise<{
+        id: string;
+        githubId: string;
+        username: string;
+        name: string | null;
+        avatar: string | null;
+        bio: string | null;
+        location: string | null;
+        company: string | null;
+        website: string | null;
+        githubUrl: string | null;
+        isOnline: boolean;
+        joinedAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }>;
+}
