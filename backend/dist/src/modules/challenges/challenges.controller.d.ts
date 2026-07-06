@@ -9,11 +9,11 @@ export declare class ChallengesController {
         title: string;
         description: string;
         createdAt: Date;
-        icon: string | null;
-        category: string | null;
         difficulty: import("@prisma/client").$Enums.Difficulty;
         xpReward: number;
         target: number;
+        icon: string | null;
+        category: string | null;
         expiresAt: Date;
     }[]>;
     getMyChallenges(): Promise<({
@@ -23,11 +23,11 @@ export declare class ChallengesController {
             title: string;
             description: string;
             createdAt: Date;
-            icon: string | null;
-            category: string | null;
             difficulty: import("@prisma/client").$Enums.Difficulty;
             xpReward: number;
             target: number;
+            icon: string | null;
+            category: string | null;
             expiresAt: Date;
         };
     } & {
@@ -44,11 +44,11 @@ export declare class ChallengesController {
         title: string;
         description: string;
         createdAt: Date;
-        icon: string | null;
-        category: string | null;
         difficulty: import("@prisma/client").$Enums.Difficulty;
         xpReward: number;
         target: number;
+        icon: string | null;
+        category: string | null;
         expiresAt: Date;
     }>;
 }

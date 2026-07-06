@@ -9,6 +9,7 @@ export interface User {
   name: string | null;
   avatar: string | null;
   bio: string | null;
+  [key: string]: any;
 }
 
 export function useCurrentUser() {

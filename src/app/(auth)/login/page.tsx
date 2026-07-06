@@ -139,7 +139,7 @@ export default function LoginPage() {
 
           {/* GitHub OAuth */}
           <a
-            href="https://github.com/login/oauth/authorize?client_id=Ov23li67nrFzRKyBzGVB"
+            href={`https://github.com/login/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || 'Ov23li67nrFzRKyBzGVB'}`}
             className="w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-xl bg-white text-black font-medium hover:bg-gray-100 transition-colors mb-6"
           >
             <GithubIcon className="w-5 h-5" />

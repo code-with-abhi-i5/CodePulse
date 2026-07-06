@@ -106,6 +106,16 @@ let SyncService = SyncService_1 = class SyncService {
                     commitActivity: commitActivityData,
                 }
             });
+            const socialLinks = githubData.socialAccounts?.nodes?.map((node) => ({
+                provider: node.provider,
+                url: node.url,
+            })) || [];
+            if (socialLinks.length > 0) {
+                await this.prisma.user.update({
+                    where: { id: userId },
+                    data: { socialLinks },
+                });
+            }
             const totalLangCount = Array.from(languageMap.values()).reduce((sum, val) => sum + val.count, 0);
             for (const [name, data] of languageMap.entries()) {
                 const percentage = totalLangCount > 0 ? (data.count / totalLangCount) * 100 : 0;
@@ -167,27 +177,91 @@ let SyncService = SyncService_1 = class SyncService {
             });
             await this.prisma.activity.deleteMany({ where: { userId } });
             const recentActivities = [];
-            const prs = githubData.pullRequests?.nodes || [];
-            for (const pr of prs) {
-                recentActivities.push({
-                    userId,
-                    type: 'PULL_REQUEST',
-                    title: 'Opened Pull Request',
-                    description: pr.title,
-                    repository: pr.repository?.name,
-                    createdAt: new Date(pr.createdAt),
-                });
-            }
-            const issues = githubData.issues?.nodes || [];
-            for (const issue of issues) {
-                recentActivities.push({
-                    userId,
-                    type: 'ISSUE',
-                    title: 'Opened Issue',
-                    description: issue.title,
-                    repository: issue.repository?.name,
-                    createdAt: new Date(issue.createdAt),
-                });
+            const githubEvents = await this.github.fetchUserEvents(username, accessToken) || [];
+            for (const event of githubEvents) {
+                if (event.type === 'PushEvent') {
+                    const commitsCount = event.payload?.commits?.length || 0;
+                    if (commitsCount > 0) {
+                        recentActivities.push({
+                            userId,
+                            type: 'COMMIT',
+                            title: `Pushed ${commitsCount} commit${commitsCount > 1 ? 's' : ''}`,
+                            description: `Contributed to ${event.repo.name}`,
+                            repository: event.repo.name,
+                            createdAt: new Date(event.created_at),
+                        });
+                    }
+                }
+                else if (event.type === 'PullRequestEvent' && event.payload?.action === 'opened') {
+                    recentActivities.push({
+                        userId,
+                        type: 'PULL_REQUEST',
+                        title: 'Opened Pull Request',
+                        description: event.payload?.pull_request?.title || 'Contributed code',
+                        repository: event.repo.name,
+                        createdAt: new Date(event.created_at),
+                    });
+                }
+                else if (event.type === 'IssuesEvent' && event.payload?.action === 'opened') {
+                    recentActivities.push({
+                        userId,
+                        type: 'ISSUE',
+                        title: 'Opened Issue',
+                        description: event.payload?.issue?.title || 'Reported an issue',
+                        repository: event.repo.name,
+                        createdAt: new Date(event.created_at),
+                    });
+                }
+                else if (event.type === 'WatchEvent' && event.payload?.action === 'started') {
+                    recentActivities.push({
+                        userId,
+                        type: 'STAR',
+                        title: 'Starred repository',
+                        description: event.repo.name,
+                        repository: event.repo.name,
+                        createdAt: new Date(event.created_at),
+                    });
+                }
+                else if (event.type === 'ForkEvent') {
+                    recentActivities.push({
+                        userId,
+                        type: 'FORK',
+                        title: 'Forked repository',
+                        description: event.repo.name,
+                        repository: event.repo.name,
+                        createdAt: new Date(event.created_at),
+                    });
+                }
+                else if (event.type === 'CreateEvent' && event.payload?.ref_type === 'repository') {
+                    recentActivities.push({
+                        userId,
+                        type: 'ACHIEVEMENT',
+                        title: 'Created repository',
+                        description: event.repo.name,
+                        repository: event.repo.name,
+                        createdAt: new Date(event.created_at),
+                    });
+                }
+                else if (event.type === 'PullRequestReviewEvent') {
+                    recentActivities.push({
+                        userId,
+                        type: 'REVIEW',
+                        title: 'Reviewed Pull Request',
+                        description: event.payload?.pull_request?.title || 'Code review',
+                        repository: event.repo.name,
+                        createdAt: new Date(event.created_at),
+                    });
+                }
+                else if (event.type === 'IssueCommentEvent') {
+                    recentActivities.push({
+                        userId,
+                        type: 'REVIEW',
+                        title: 'Left a comment',
+                        description: `Commented on ${event.payload?.issue?.pull_request ? 'Pull Request' : 'Issue'}`,
+                        repository: event.repo.name,
+                        createdAt: new Date(event.created_at),
+                    });
+                }
             }
             recentActivities.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
             if (recentActivities.length > 0) {

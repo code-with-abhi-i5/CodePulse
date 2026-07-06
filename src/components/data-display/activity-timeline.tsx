@@ -45,7 +45,7 @@ export function ActivityTimeline({
       <div className="space-y-1">
         {displayActivities.length > 0 ? (
           displayActivities.map((activity, index) => {
-            const config = activityIcons[activity.type] || activityIcons.commit;
+            const config = activityIcons[activity.type.toLowerCase()] || activityIcons.commit;
             const Icon = config.icon;
 
             return (

@@ -20,6 +20,7 @@ model User {
   website             String?
   githubUrl           String?
   isOnline            Boolean           @default(false)
+  socialLinks         Json?
   joinedAt            DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   deletedAt           DateTime?

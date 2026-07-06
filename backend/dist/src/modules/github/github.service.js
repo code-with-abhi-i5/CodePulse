@@ -29,6 +29,14 @@ let GithubService = GithubService_1 = class GithubService {
         query($username: String!) {
           user(login: $username) {
             contributionsCollection {
+              commitContributionsByRepository(maxRepositories: 5) {
+                repository {
+                  name
+                }
+                contributions(first: 1) {
+                  totalCount
+                }
+              }
               contributionCalendar {
                 totalContributions
                 weeks {
@@ -106,6 +114,20 @@ let GithubService = GithubService_1 = class GithubService {
                 }
               }
             }
+            starredRepositories(first: 10, orderBy: {field: STARRED_AT, direction: DESC}) {
+              edges {
+                starredAt
+                node {
+                  name
+                }
+              }
+            }
+            socialAccounts(first: 5) {
+              nodes {
+                provider
+                url
+              }
+            }
           }
         }
       `;
@@ -123,6 +145,24 @@ let GithubService = GithubService_1 = class GithubService {
         catch (error) {
             this.logger.error(`Error fetching GitHub data for ${username}:`, error.message);
             return null;
+        }
+    }
+    async fetchUserEvents(username, accessToken) {
+        try {
+            const response = await axios_1.default.get(`https://api.github.com/users/${username}/events`, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: 'application/vnd.github.v3+json',
+                },
+                params: {
+                    per_page: 30,
+                },
+            });
+            return response.data;
+        }
+        catch (error) {
+            this.logger.error(`Error fetching GitHub events for ${username}:`, error.message);
+            return [];
         }
     }
 };

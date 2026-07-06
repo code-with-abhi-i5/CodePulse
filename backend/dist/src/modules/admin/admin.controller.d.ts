@@ -14,6 +14,7 @@ export declare class AdminController {
         website: string | null;
         githubUrl: string | null;
         isOnline: boolean;
+        socialLinks: import("@prisma/client/runtime/library").JsonValue | null;
         joinedAt: Date;
         updatedAt: Date;
         deletedAt: Date | null;

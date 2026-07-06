@@ -14,6 +14,14 @@ export class GithubService {
         query($username: String!) {
           user(login: $username) {
             contributionsCollection {
+              commitContributionsByRepository(maxRepositories: 5) {
+                repository {
+                  name
+                }
+                contributions(first: 1) {
+                  totalCount
+                }
+              }
               contributionCalendar {
                 totalContributions
                 weeks {
@@ -91,6 +99,20 @@ export class GithubService {
                 }
               }
             }
+            starredRepositories(first: 10, orderBy: {field: STARRED_AT, direction: DESC}) {
+              edges {
+                starredAt
+                node {
+                  name
+                }
+              }
+            }
+            socialAccounts(first: 5) {
+              nodes {
+                provider
+                url
+              }
+            }
           }
         }
       `;
@@ -114,6 +136,23 @@ export class GithubService {
     } catch (error: any) {
       this.logger.error(`Error fetching GitHub data for ${username}:`, error.message);
       return null;
+    }
+  }
+  async fetchUserEvents(username: string, accessToken: string) {
+    try {
+      const response = await axios.get(`https://api.github.com/users/${username}/events`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+        params: {
+          per_page: 30, // Get the last 30 events
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      this.logger.error(`Error fetching GitHub events for ${username}:`, error.message);
+      return [];
     }
   }
 }
