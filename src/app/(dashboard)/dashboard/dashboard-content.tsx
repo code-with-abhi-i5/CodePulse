@@ -45,7 +45,9 @@ export function DashboardContent() {
     rank: index + 1,
     score: dev.rating?.overall || 0,
     trend: 'up',
-    trendValue: 1
+    trendValue: 1,
+    previousRank: index + 1,
+    change: 0
   }));
 
   const statsData = [

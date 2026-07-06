@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -74,5 +74,18 @@ export default function AuthCallbackPage() {
       <h2 className="text-xl font-semibold">Authenticating with GitHub...</h2>
       <p className="text-muted-foreground">Please wait while we log you in.</p>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <h2 className="text-xl font-semibold">Loading...</h2>
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

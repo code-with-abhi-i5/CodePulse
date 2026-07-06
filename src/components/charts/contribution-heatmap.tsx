@@ -43,7 +43,7 @@ export function ContributionHeatmap({ className, data = [] }: ContributionHeatma
       for (let i = paddingNeeded; i > 0; i--) {
         const d = new Date(firstDate);
         d.setDate(d.getDate() - i);
-        paddedDays.push({ date: d.toISOString().split('T')[0], count: 0 });
+        paddedDays.push({ date: d.toISOString().split('T')[0], count: 0, level: 0 } as ContributionDay);
       }
       return [...paddedDays, ...recentData];
     }
