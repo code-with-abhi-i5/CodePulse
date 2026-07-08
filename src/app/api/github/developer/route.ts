@@ -11,6 +11,7 @@ export async function GET(request: Request) {
   }
 
   if (force) {
+    // @ts-expect-error: Next.js canary typings expect 2 arguments
     revalidateTag(`github-${username}`);
   }
 
