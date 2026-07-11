@@ -67,6 +67,7 @@ let AuthService = AuthService_1 = class AuthService {
                 where: { githubId: githubIdString },
                 update: {
                     name: githubUser.name || null,
+                    email: githubUser.email || null,
                     avatar: githubUser.avatar_url || null,
                     bio: githubUser.bio || null,
                     location: githubUser.location || null,
@@ -79,6 +80,7 @@ let AuthService = AuthService_1 = class AuthService {
                     githubId: githubIdString,
                     username: githubUser.login,
                     name: githubUser.name || null,
+                    email: githubUser.email || null,
                     avatar: githubUser.avatar_url || null,
                     bio: githubUser.bio || null,
                     location: githubUser.location || null,

@@ -10,7 +10,7 @@ import { ActivityTimeline } from "@/components/data-display/activity-timeline";
 import { AnimatedCounter } from "@/components/animations/animated-counter";
 import { useCurrentUser } from "@/hooks/api/use-auth";
 import { useActiveChallenges } from "@/hooks/api/use-challenges";
-import { useGlobalLeaderboard } from "@/hooks/api/use-leaderboard";
+import { useLeaderboardInfinite } from "@/hooks/api/use-leaderboard";
 import { GitCommit, GitPullRequest, Flame, Star, Loader2, Trophy, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,8 @@ const iconMap: Record<string, React.ElementType> = {
 export function DashboardContent() {
   const { data: currentUser, isLoading } = useCurrentUser();
   const { data: challengesData } = useActiveChallenges();
-  const { data: leaderboardDevs } = useGlobalLeaderboard(5);
+  const { data: leaderboardData } = useLeaderboardInfinite("global", 5);
+  const leaderboardDevs = leaderboardData?.pages[0]?.data || [];
 
   if (isLoading) {
     return (

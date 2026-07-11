@@ -13,6 +13,7 @@ model User {
   githubId            String            @unique
   username            String            @unique
   name                String?
+  email               String?
   avatar              String?
   bio                 String?
   location            String?
@@ -333,4 +334,39 @@ enum ActivityType {
   FORK
   ACHIEVEMENT
   LEVEL_UP
+}
+
+model GithubUser {
+  id              String   @id @default(uuid())
+  githubId        String   @unique
+  username        String   @unique
+  name            String?
+  avatarUrl       String?
+  bio             String?
+  company         String?
+  location        String?
+  country         String?  
+  primaryLanguage String?
+  followers       Int      @default(0)
+  following       Int      @default(0)
+  publicRepos     Int      @default(0)
+  totalStars      Int      @default(0)
+  totalForks      Int      @default(0)
+  score           Float    @default(0) 
+  lastSyncedAt    DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([score(sort: Desc)])
+  @@index([country, score(sort: Desc)])
+  @@map("github_users")
+}
+
+model LeaderboardCache {
+  id          String   @id @default(uuid())
+  category    String   @unique
+  data        Json
+  expiresAt   DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@map("leaderboard_caches")
 }

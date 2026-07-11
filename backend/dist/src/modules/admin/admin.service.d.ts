@@ -7,6 +7,7 @@ export declare class AdminService {
         githubId: string;
         username: string;
         name: string | null;
+        email: string | null;
         avatar: string | null;
         bio: string | null;
         location: string | null;

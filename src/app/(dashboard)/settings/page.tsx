@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { mockCurrentUser } from "@/lib/mock-data";
 import { toast } from "sonner";
 import {
   Settings as SettingsIcon, User, Bell, Shield, Palette, Globe,
@@ -12,6 +11,8 @@ import {
 import { GithubIcon } from "@/components/icons/github";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
+import { useCurrentUser } from "@/hooks/api/use-auth";
+import { useUpdateProfile } from "@/hooks/api/use-settings";
 
 const sections = [
   { id: "profile", label: "Profile", icon: User },
@@ -23,14 +24,51 @@ const sections = [
 
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState("profile");
-  const [isSaving, setIsSaving] = useState(false);
-  const user = mockCurrentUser;
+  
+  const { data: user, isLoading: isUserLoading } = useCurrentUser();
+  const updateProfileMutation = useUpdateProfile();
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setIsSaving(false);
+  const handleProfileSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+    
+    // The email field is now supported in the backend schema/DTO
+    // and can be sent safely.
+    // delete data.email;
+    
+    updateProfileMutation.mutate(data, {
+      onSuccess: () => {
+        toast.success("Profile saved successfully!");
+      },
+      onError: (error) => {
+        toast.error("Failed to save profile. " + (error as any)?.message);
+      }
+    });
+  };
+
+  const handleMockSave = async () => {
     toast.success("Settings saved successfully!");
+  };
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Fallback user if not logged in
+  const displayUser = user || {
+    name: "Guest",
+    username: "guest",
+    email: "",
+    avatar: "https://github.com/ghost.png",
+    bio: "",
+    location: "",
+    company: "",
+    website: "",
   };
 
   return (
@@ -45,16 +83,17 @@ export default function SettingsPage() {
             Manage your account preferences
           </p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium text-sm disabled:opacity-50"
-        >
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Save Changes
-        </motion.button>
+        {activeSection !== "profile" && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleMockSave}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium text-sm disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            Save Changes
+          </motion.button>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
@@ -91,50 +130,113 @@ export default function SettingsPage() {
               animate={{ opacity: 1, x: 0 }}
               className="space-y-6"
             >
-              <div className="glass-card rounded-[20px] p-6">
-                <h2 className="text-lg font-semibold mb-4">Profile Information</h2>
+              <form onSubmit={handleProfileSave} className="glass-card rounded-[20px] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Profile Information</h2>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    disabled={updateProfileMutation.isPending}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium text-sm disabled:opacity-50"
+                  >
+                    {updateProfileMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save Profile
+                  </motion.button>
+                </div>
                 <div className="flex items-center gap-4 mb-6">
-                  <img src={user.avatar} alt={user.name} className="w-20 h-20 rounded-2xl" />
+                  <img src={displayUser.avatar || 'https://github.com/ghost.png'} alt={displayUser.name || 'User'} className="w-20 h-20 rounded-2xl bg-muted object-cover" />
                   <div>
-                    <button className="text-sm px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                    <button type="button" className="text-sm px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
                       Change Avatar
                     </button>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[
-                    { label: "Full Name", value: user.name, icon: User },
-                    { label: "Username", value: `@${user.username}`, icon: User },
-                    { label: "Email", value: "alex@example.com", icon: Mail },
-                    { label: "Location", value: user.location || "", icon: Globe },
-                    { label: "Company", value: user.company || "", icon: Globe },
-                    { label: "Website", value: user.website || "", icon: Globe },
-                  ].map((field) => {
-                    const Icon = field.icon;
-                    return (
-                      <div key={field.label}>
-                        <label className="text-sm font-medium mb-1.5 block">{field.label}</label>
-                        <div className="relative">
-                          <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <input
-                            type="text"
-                            defaultValue={field.value}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Full Name</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="text"
+                        name="name"
+                        defaultValue={displayUser.name || ''}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Username</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="text"
+                        name="username"
+                        defaultValue={displayUser.username}
+                        disabled
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm opacity-50 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="email"
+                        name="email"
+                        defaultValue={displayUser.email || ''}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Location</label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="text"
+                        name="location"
+                        defaultValue={displayUser.location || ''}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Company</label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="text"
+                        name="company"
+                        defaultValue={displayUser.company || ''}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Website</label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="url"
+                        name="website"
+                        defaultValue={displayUser.website || ''}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-4">
                   <label className="text-sm font-medium mb-1.5 block">Bio</label>
                   <textarea
-                    defaultValue={user.bio}
+                    name="bio"
+                    defaultValue={displayUser.bio || ''}
                     rows={3}
                     className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
                   />
                 </div>
-              </div>
+              </form>
             </motion.div>
           )}
 
@@ -298,7 +400,7 @@ export default function SettingsPage() {
               <h2 className="text-lg font-semibold mb-4">Integrations</h2>
               <div className="space-y-3">
                 {[
-                  { name: "GitHub", desc: "Connected as @alexchen", icon: GithubIcon, connected: true },
+                  { name: "GitHub", desc: `Connected as @${displayUser.username}`, icon: GithubIcon, connected: true },
                   { name: "Discord", desc: "Receive notifications via Discord", icon: Globe, connected: false },
                   { name: "Slack", desc: "Post updates to Slack channels", icon: Globe, connected: false },
                 ].map((integration, i) => {
@@ -338,3 +440,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

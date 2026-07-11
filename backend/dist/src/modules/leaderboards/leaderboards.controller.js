@@ -14,40 +14,76 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LeaderboardsController = void 0;
 const common_1 = require("@nestjs/common");
-const swagger_1 = require("@nestjs/swagger");
 const leaderboards_service_1 = require("./leaderboards.service");
+const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const swagger_1 = require("@nestjs/swagger");
 let LeaderboardsController = class LeaderboardsController {
     leaderboardsService;
     constructor(leaderboardsService) {
         this.leaderboardsService = leaderboardsService;
     }
-    async getGlobalLeaderboard(limit) {
-        return this.leaderboardsService.getGlobalLeaderboard(limit ? Number(limit) : 100);
+    async getGlobalLeaderboard(cursor, limit) {
+        const parsedLimit = limit ? parseInt(limit, 10) : 20;
+        return this.leaderboardsService.getGlobalLeaderboard(cursor, parsedLimit);
     }
-    async getLanguageLeaderboard(language, limit) {
-        return this.leaderboardsService.getLanguageLeaderboard(language, limit ? Number(limit) : 50);
+    async getIndiaLeaderboard(cursor, limit) {
+        const parsedLimit = limit ? parseInt(limit, 10) : 20;
+        return this.leaderboardsService.getIndiaLeaderboard(cursor, parsedLimit);
+    }
+    async getFriendsLeaderboard(req, cursor, limit) {
+        const parsedLimit = limit ? parseInt(limit, 10) : 20;
+        return this.leaderboardsService.getFriendsLeaderboard(req.user.id, cursor, parsedLimit);
+    }
+    async getUserProfile(username) {
+        return this.leaderboardsService.searchProfile(username);
     }
 };
 exports.LeaderboardsController = LeaderboardsController;
 __decorate([
     (0, common_1.Get)('global'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get global top developers based on overall rating' }),
-    __param(0, (0, common_1.Query)('limit')),
+    (0, swagger_1.ApiOperation)({ summary: 'Get global leaderboard' }),
+    (0, swagger_1.ApiQuery)({ name: 'cursor', required: false, type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number }),
+    __param(0, (0, common_1.Query)('cursor')),
+    __param(1, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], LeaderboardsController.prototype, "getGlobalLeaderboard", null);
 __decorate([
-    (0, common_1.Get)('language'),
-    (0, swagger_1.ApiOperation)({ summary: 'Get leaderboard for a specific programming language' }),
-    __param(0, (0, common_1.Query)('language')),
+    (0, common_1.Get)('india'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get India leaderboard' }),
+    (0, swagger_1.ApiQuery)({ name: 'cursor', required: false, type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number }),
+    __param(0, (0, common_1.Query)('cursor')),
     __param(1, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Number]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
-], LeaderboardsController.prototype, "getLanguageLeaderboard", null);
+], LeaderboardsController.prototype, "getIndiaLeaderboard", null);
+__decorate([
+    (0, common_1.Get)('friends'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiOperation)({ summary: 'Get friends leaderboard' }),
+    (0, swagger_1.ApiQuery)({ name: 'cursor', required: false, type: String }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number }),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Query)('cursor')),
+    __param(2, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String]),
+    __metadata("design:returntype", Promise)
+], LeaderboardsController.prototype, "getFriendsLeaderboard", null);
+__decorate([
+    (0, common_1.Get)('user/:username'),
+    (0, swagger_1.ApiOperation)({ summary: 'Search and get specific user profile stats' }),
+    __param(0, (0, common_1.Param)('username')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], LeaderboardsController.prototype, "getUserProfile", null);
 exports.LeaderboardsController = LeaderboardsController = __decorate([
-    (0, swagger_1.ApiTags)('leaderboards'),
+    (0, swagger_1.ApiTags)('Leaderboards'),
     (0, common_1.Controller)('leaderboards'),
     __metadata("design:paramtypes", [leaderboards_service_1.LeaderboardsService])
 ], LeaderboardsController);

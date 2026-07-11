@@ -1,23 +1,27 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { apiClient, extractData } from '@/lib/api-client';
 
-export function useGlobalLeaderboard(limit = 100) {
-  return useQuery({
-    queryKey: ['leaderboards', 'global', limit],
-    queryFn: async () => {
-      const response = await apiClient.get(`/leaderboards/global?limit=${limit}`);
-      return extractData<any[]>(response);
+export function useLeaderboardInfinite(category: 'global' | 'india' | 'friends', limit = 20) {
+  return useInfiniteQuery({
+    queryKey: ['leaderboards', category, limit],
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const cursorParams = pageParam ? `&cursor=${pageParam}` : '';
+      const response = await apiClient.get(`/leaderboards/${category}?limit=${limit}${cursorParams}`);
+      const result = extractData<{ data: any[], nextCursor: string | null }>(response);
+      return result;
     },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 }
 
-export function useLanguageLeaderboard(language: string, limit = 50) {
+export function useUserProfileSearch(username: string) {
   return useQuery({
-    queryKey: ['leaderboards', 'language', language, limit],
+    queryKey: ['leaderboard', 'user', username],
     queryFn: async () => {
-      const response = await apiClient.get(`/leaderboards/language?language=${language}&limit=${limit}`);
-      return extractData<any[]>(response);
+      const response = await apiClient.get(`/leaderboards/user/${username}`);
+      return extractData<any>(response);
     },
-    enabled: !!language,
+    enabled: !!username,
   });
 }

@@ -30,6 +30,8 @@ const reports_module_1 = require("./modules/reports/reports.module");
 const search_module_1 = require("./modules/search/search.module");
 const admin_module_1 = require("./modules/admin/admin.module");
 const settings_module_1 = require("./modules/settings/settings.module");
+const cache_manager_1 = require("@nestjs/cache-manager");
+const bullmq_1 = require("@nestjs/bullmq");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -37,6 +39,22 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_1.ConfigModule.forRoot({ isGlobal: true }),
+            bullmq_1.BullModule.forRoot({
+                connection: {
+                    host: process.env.REDIS_HOST || 'localhost',
+                    port: parseInt(process.env.REDIS_PORT || '6379'),
+                    password: process.env.REDIS_PASSWORD || undefined,
+                    tls: process.env.REDIS_PASSWORD ? {} : undefined,
+                },
+            }),
+            cache_manager_1.CacheModule.register({
+                isGlobal: true,
+                ttl: 60 * 60 * 1000,
+                host: process.env.REDIS_HOST || 'localhost',
+                port: parseInt(process.env.REDIS_PORT || '6379'),
+                password: process.env.REDIS_PASSWORD || undefined,
+                tls: process.env.REDIS_PASSWORD ? {} : undefined,
+            }),
             prisma_module_1.PrismaModule,
             auth_module_1.AuthModule,
             users_module_1.UsersModule,

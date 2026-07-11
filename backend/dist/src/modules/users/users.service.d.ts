@@ -43,6 +43,7 @@ export declare class UsersService {
         githubId: string;
         username: string;
         name: string | null;
+        email: string | null;
         avatar: string | null;
         bio: string | null;
         location: string | null;
@@ -154,6 +155,7 @@ export declare class UsersService {
         githubId: string;
         username: string;
         name: string | null;
+        email: string | null;
         avatar: string | null;
         bio: string | null;
         location: string | null;
@@ -171,6 +173,7 @@ export declare class UsersService {
         githubId: string;
         username: string;
         name: string | null;
+        email: string | null;
         avatar: string | null;
         bio: string | null;
         location: string | null;
