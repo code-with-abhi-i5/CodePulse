@@ -4,27 +4,50 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { StaggerContainer, StaggerItem } from "@/components/animations/page-transition";
 import { ChallengeCard } from "@/components/cards/challenge-card";
-import { mockChallenges } from "@/lib/mock-data";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Target, Flame, Calendar, Trophy, Sparkles } from "lucide-react";
 
+import { useActiveChallenges } from "@/hooks/api/use-challenges";
+
 const tabs = [
   { id: "all", label: "All", icon: Target },
-  { id: "daily", label: "Daily", icon: Flame },
-  { id: "weekly", label: "Weekly", icon: Calendar },
-  { id: "monthly", label: "Monthly", icon: Trophy },
-  { id: "seasonal", label: "Seasonal", icon: Sparkles },
+  { id: "DAILY", label: "Daily", icon: Flame },
+  { id: "WEEKLY", label: "Weekly", icon: Calendar },
+  { id: "MONTHLY", label: "Monthly", icon: Trophy },
+  { id: "SEASONAL", label: "Seasonal", icon: Sparkles },
 ];
 
 export default function ChallengesPage() {
   const [activeTab, setActiveTab] = useState("all");
+  const { data: activeChallengesData, isLoading } = useActiveChallenges();
+
+  // Map backend format to frontend format temporarily
+  const realChallenges = (activeChallengesData || []).map((c: any) => ({
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    type: c.type, // e.g. "DAILY"
+    difficulty: c.difficulty.toLowerCase(),
+    xpReward: c.xpReward,
+    progress: 0,
+    target: c.target,
+    isCompleted: false,
+    expiresAt: c.expiresAt,
+    createdAt: c.createdAt,
+    icon: c.icon || "Target",
+    category: c.category,
+  }));
 
   const filtered = activeTab === "all"
-    ? mockChallenges
-    : mockChallenges.filter((c) => c.type === activeTab);
+    ? realChallenges
+    : realChallenges.filter((c: any) => c.type === activeTab);
 
-  const active = filtered.filter((c) => !c.isCompleted);
-  const completed = filtered.filter((c) => c.isCompleted);
+  const active = filtered.filter((c: any) => !c.isCompleted);
+  const completed = filtered.filter((c: any) => c.isCompleted);
+
+  if (isLoading) {
+    return <div className="p-8 text-center text-muted-foreground">Loading challenges...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -41,10 +64,10 @@ export default function ChallengesPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Active", value: mockChallenges.filter((c) => !c.isCompleted).length, color: "text-blue-400" },
-          { label: "Completed", value: mockChallenges.filter((c) => c.isCompleted).length, color: "text-emerald-400" },
-          { label: "XP Earned", value: "2,350", color: "text-amber-400" },
-          { label: "Total XP Available", value: "4,800", color: "text-purple-400" },
+          { label: "Active", value: realChallenges.filter((c: any) => !c.isCompleted).length, color: "text-blue-400" },
+          { label: "Completed", value: realChallenges.filter((c: any) => c.isCompleted).length, color: "text-emerald-400" },
+          { label: "XP Earned", value: "0", color: "text-amber-400" },
+          { label: "Total XP Available", value: realChallenges.reduce((acc: number, c: any) => acc + (c.xpReward || 0), 0), color: "text-purple-400" },
         ].map((stat, i) => (
           <motion.div
             key={i}

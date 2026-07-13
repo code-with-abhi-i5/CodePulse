@@ -32,6 +32,10 @@ let ChallengesController = class ChallengesController {
     async createChallenge(dto) {
         return this.challengesService.createChallenge(dto);
     }
+    async triggerDailyChallenges() {
+        await this.challengesService.generateDailyChallenges();
+        return { success: true, message: 'Daily challenges generated' };
+    }
 };
 exports.ChallengesController = ChallengesController;
 __decorate([
@@ -58,6 +62,13 @@ __decorate([
     __metadata("design:paramtypes", [challenges_dto_1.CreateChallengeDto]),
     __metadata("design:returntype", Promise)
 ], ChallengesController.prototype, "createChallenge", null);
+__decorate([
+    (0, common_1.Post)('trigger'),
+    (0, swagger_1.ApiOperation)({ summary: 'Trigger generation of daily challenges (Admin/Dev)' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ChallengesController.prototype, "triggerDailyChallenges", null);
 exports.ChallengesController = ChallengesController = __decorate([
     (0, swagger_1.ApiTags)('challenges'),
     (0, common_1.Controller)('challenges'),

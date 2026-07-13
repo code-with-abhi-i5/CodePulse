@@ -17,19 +17,19 @@ export declare class LeaderboardsService {
         githubId: string;
         username: string;
         name: string | null;
-        avatarUrl: string | null;
         bio: string | null;
-        company: string | null;
         location: string | null;
-        country: string | null;
-        primaryLanguage: string | null;
-        followers: number;
+        company: string | null;
+        updatedAt: Date;
         following: number;
-        publicRepos: number;
+        followers: number;
         totalStars: number;
         totalForks: number;
+        avatarUrl: string | null;
+        country: string | null;
+        primaryLanguage: string | null;
+        publicRepos: number;
         score: number;
         lastSyncedAt: Date;
-        updatedAt: Date;
     } | null>;
 }

@@ -32,6 +32,7 @@ const admin_module_1 = require("./modules/admin/admin.module");
 const settings_module_1 = require("./modules/settings/settings.module");
 const cache_manager_1 = require("@nestjs/cache-manager");
 const bullmq_1 = require("@nestjs/bullmq");
+const schedule_1 = require("@nestjs/schedule");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -39,6 +40,7 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_1.ConfigModule.forRoot({ isGlobal: true }),
+            schedule_1.ScheduleModule.forRoot(),
             bullmq_1.BullModule.forRoot({
                 connection: {
                     host: process.env.REDIS_HOST || 'localhost',

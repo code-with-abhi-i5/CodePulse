@@ -10,13 +10,21 @@ exports.ChallengesModule = void 0;
 const common_1 = require("@nestjs/common");
 const challenges_controller_1 = require("./challenges.controller");
 const challenges_service_1 = require("./challenges.service");
+const bullmq_1 = require("@nestjs/bullmq");
+const challenges_worker_1 = require("./challenges.worker");
+const challenges_scheduler_1 = require("./challenges.scheduler");
 let ChallengesModule = class ChallengesModule {
 };
 exports.ChallengesModule = ChallengesModule;
 exports.ChallengesModule = ChallengesModule = __decorate([
     (0, common_1.Module)({
+        imports: [
+            bullmq_1.BullModule.registerQueue({
+                name: 'challenges',
+            }),
+        ],
         controllers: [challenges_controller_1.ChallengesController],
-        providers: [challenges_service_1.ChallengesService],
+        providers: [challenges_service_1.ChallengesService, challenges_worker_1.ChallengesWorker, challenges_scheduler_1.ChallengesScheduler],
         exports: [challenges_service_1.ChallengesService],
     })
 ], ChallengesModule);

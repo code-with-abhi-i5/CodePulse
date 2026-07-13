@@ -24,7 +24,7 @@ const iconMap: Record<string, React.ElementType> = {
 export function DashboardContent() {
   const { data: currentUser, isLoading } = useCurrentUser();
   const { data: challengesData } = useActiveChallenges();
-  const { data: leaderboardData } = useLeaderboardInfinite("global", 5);
+  const { data: leaderboardData } = useLeaderboardInfinite("friends", 5);
   const leaderboardDevs = leaderboardData?.pages[0]?.data || [];
 
   if (isLoading) {

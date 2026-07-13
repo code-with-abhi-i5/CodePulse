@@ -51,4 +51,6 @@ export declare class ChallengesService {
         category: string | null;
         expiresAt: Date;
     }>;
+    processUserActivity(userId: string, category: string, count?: number): Promise<void>;
+    generateDailyChallenges(): Promise<void>;
 }

@@ -28,4 +28,12 @@ export class ChallengesController {
   async createChallenge(@Body() dto: CreateChallengeDto) {
     return this.challengesService.createChallenge(dto);
   }
+
+
+  @Post('trigger')
+  @ApiOperation({ summary: 'Trigger generation of daily challenges (Admin/Dev)' })
+  async triggerDailyChallenges() {
+    await this.challengesService.generateDailyChallenges();
+    return { success: true, message: 'Daily challenges generated' };
+  }
 }

@@ -51,4 +51,8 @@ export declare class ChallengesController {
         category: string | null;
         expiresAt: Date;
     }>;
+    triggerDailyChallenges(): Promise<{
+        success: boolean;
+        message: string;
+    }>;
 }
