@@ -1,18 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "motion/react";
 import { StaggerContainer, StaggerItem } from "@/components/animations/page-transition";
 import { AchievementCard } from "@/components/cards/achievement-card";
+import { AchievementShareModal } from "@/components/modals/achievement-share-modal";
 import { useCurrentUser } from "@/hooks/api/use-auth";
 import { Award, Lock, Unlock, Filter, Loader2 } from "lucide-react";
-import { useState } from "react";
+import type { Achievement } from "@/types";
 
 const categories = ["All", "Milestones", "Popularity", "Dedication", "Consistency", "Diversity", "Social"];
 
 export default function AchievementsPage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [showFilter, setShowFilter] = useState<"all" | "unlocked" | "locked">("all");
+  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const { data: currentUser, isLoading } = useCurrentUser();
+
+  const handleOpenAchievementModal = (achievement: Achievement) => {
+    setSelectedAchievement(achievement);
+    setIsShareModalOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -132,7 +141,10 @@ export default function AchievementsPage() {
       <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((achievement: any) => (
           <StaggerItem key={achievement.id}>
-            <AchievementCard achievement={achievement} />
+            <AchievementCard
+              achievement={achievement}
+              onClick={() => handleOpenAchievementModal(achievement)}
+            />
           </StaggerItem>
         ))}
       </StaggerContainer>
@@ -150,6 +162,13 @@ export default function AchievementsPage() {
           <p className="text-sm text-muted-foreground">Try a different category or filter.</p>
         </motion.div>
       )}
+
+      {/* Interactive Achievement Share Celebration Modal */}
+      <AchievementShareModal
+        achievement={selectedAchievement}
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+      />
     </div>
   );
 }
