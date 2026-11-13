@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
@@ -48,7 +48,7 @@ function useBreadcrumbs() {
   const activeItem = allItems.find((item) => item.href === pathname);
 
   const crumbs: { title: string; href?: string }[] = [
-    { title: "DevBattle", href: "/dashboard" },
+    { title: "CodePulse", href: "/dashboard" },
   ];
 
   if (activeItem) {
@@ -186,11 +186,11 @@ function NotificationBell() {
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   if (!mounted) {
     return (

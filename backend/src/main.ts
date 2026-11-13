@@ -28,8 +28,8 @@ async function bootstrap() {
 
   // Swagger OpenAPI Configuration
   const config = new DocumentBuilder()
-    .setTitle('DevBattle API')
-    .setDescription('The enterprise backend for DevBattle platform')
+    .setTitle('CodePulse API')
+    .setDescription('The enterprise backend for CodePulse platform')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

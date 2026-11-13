@@ -637,7 +637,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <div className="flex items-center gap-1.5">
               <Zap className="h-3 w-3 text-purple-400" />
               <span className="text-[11px] text-muted-foreground">
-                DevBattle
+                CodePulse
               </span>
             </div>
           </div>

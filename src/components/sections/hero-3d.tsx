@@ -330,7 +330,7 @@ export function Hero3D() {
                   className="text-xs font-medium"
                   style={{ color: "rgba(56, 189, 248, 0.6)" }}
                 >
-                  DevBattle Analytics
+                  CodePulse Analytics
                 </span>
               </div>
 

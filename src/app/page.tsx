@@ -98,9 +98,9 @@ export default function LandingPage() {
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
               <div className="absolute inset-0 bg-sky-500/20 rounded-xl blur-md group-hover:bg-sky-500/40 transition-colors duration-300" />
-              <Image src="/logo.png" alt="DevBattle Logo" width={36} height={36} className="rounded-xl relative z-10" />
+              <Image src="/logo.png" alt="CodePulse Logo" width={36} height={36} className="rounded-xl relative z-10" />
             </div>
-            <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 transition-all duration-300 group-hover:brightness-125">DevBattle</span>
+            <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 transition-all duration-300 group-hover:brightness-125">CodePulse</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
@@ -182,7 +182,7 @@ export default function LandingPage() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">level up</span>
             </h2>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              DevBattle turns your GitHub contributions into an engaging gaming experience
+              CodePulse turns your GitHub contributions into an engaging gaming experience
               with analytics, challenges, and competitions.
             </p>
           </motion.div>
@@ -263,7 +263,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
-                quote: "DevBattle transformed how I track my progress. The gamification makes me actually excited to contribute daily.",
+                quote: "CodePulse transformed how I track my progress. The gamification makes me actually excited to contribute daily.",
                 name: "Alex Rivera",
                 role: "Senior Dev @ Google",
                 avatar: "AR",
@@ -364,8 +364,8 @@ export default function LandingPage() {
       <footer className="border-t border-sky-500/10 py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="DevBattle Logo" width={32} height={32} className="rounded-lg shadow-sm shadow-sky-500/20" />
-            <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">DevBattle</span>
+            <Image src="/logo.png" alt="CodePulse Logo" width={32} height={32} className="rounded-lg shadow-sm shadow-sky-500/20" />
+            <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">CodePulse</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-slate-400">
             <Link href="#" className="hover:text-sky-400 transition-colors">About</Link>
@@ -378,7 +378,7 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-col items-end gap-1">
             <div className="text-xs text-slate-500">
-              © 2024 DevBattle. All rights reserved.
+              © 2024 CodePulse. All rights reserved.
             </div>
             <div className="text-xs text-slate-500 flex items-center gap-1">
               Built with <span className="text-sky-400">💙</span> by{" "}
