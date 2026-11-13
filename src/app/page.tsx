@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -10,10 +10,8 @@ import {
   Trophy,
   Star,
   Zap,
-  ChevronRight,
   Play,
   Target,
-  Sparkles,
 } from "lucide-react";
 import { GithubIcon } from "@/components/icons/github";
 import { Hero3D } from "@/components/sections/hero-3d";
@@ -66,6 +64,8 @@ const stats = [
 ];
 
 export default function LandingPage() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <div className="min-h-screen text-slate-200 bg-[#020617] relative" style={{
       backgroundImage: "linear-gradient(180deg, #000000 0%, #0c1f3d 25%, #020617 70%, #000000 100%)"
@@ -76,15 +76,15 @@ export default function LandingPage() {
         style={{
           backgroundImage: `linear-gradient(rgba(56,189,248,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.5) 1px, transparent 1px)`,
           backgroundSize: "60px 60px",
-          transform: "perspective(1000px) rotateX(60deg) translateY(-100px) scale(3)",
+          transform: shouldReduceMotion ? "none" : "perspective(1000px) rotateX(60deg) translateY(-100px) scale(3)",
           transformOrigin: "top center",
         }}
       />
       {/* Navigation */}
       <motion.nav
-        initial={{ y: -100, opacity: 0 }}
+        initial={shouldReduceMotion ? false : { y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 100, damping: 20 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", stiffness: 100, damping: 20 }}
         className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-5xl px-6"
       >
         <div
@@ -98,9 +98,9 @@ export default function LandingPage() {
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
               <div className="absolute inset-0 bg-sky-500/20 rounded-xl blur-md group-hover:bg-sky-500/40 transition-colors duration-300" />
-              <Image src="/logo.png" alt="DevBattle Logo" width={36} height={36} className="rounded-xl relative z-10" />
+              <Image src="/logo.png" alt="CodePulse Logo" width={36} height={36} className="rounded-xl relative z-10" />
             </div>
-            <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 transition-all duration-300 group-hover:brightness-125">DevBattle</span>
+            <span className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 transition-all duration-300 group-hover:brightness-125">CodePulse</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
@@ -136,18 +136,18 @@ export default function LandingPage() {
           {stats.map((stat, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { delay: i * 0.1 }}
               className="text-center rounded-2xl p-6 relative overflow-hidden group"
               style={{
                 background: "linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.9))",
                 border: "1px solid rgba(56, 189, 248, 0.2)",
                 boxShadow: "0 0 20px rgba(0,0,0,0.5)",
-                transformStyle: "preserve-3d",
+                transformStyle: shouldReduceMotion ? "flat" : "preserve-3d",
               }}
-              whileHover={{
+              whileHover={shouldReduceMotion ? undefined : {
                 scale: 1.05,
                 rotateX: 10,
                 rotateY: -10,
@@ -172,9 +172,10 @@ export default function LandingPage() {
         </div>
         <div className="max-w-6xl mx-auto relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={shouldReduceMotion ? { duration: 0 } : undefined}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -182,7 +183,7 @@ export default function LandingPage() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">level up</span>
             </h2>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              DevBattle turns your GitHub contributions into an engaging gaming experience
+              CodePulse turns your GitHub contributions into an engaging gaming experience
               with analytics, challenges, and competitions.
             </p>
           </motion.div>
@@ -193,19 +194,19 @@ export default function LandingPage() {
               return (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={shouldReduceMotion ? { duration: 0 } : { delay: i * 0.1 }}
                   className="rounded-3xl p-8 relative group"
                   style={{
                     background: "linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.9))",
                     border: "1px solid rgba(56, 189, 248, 0.2)",
                     boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
-                    transformStyle: "preserve-3d",
-                    perspective: "1000px"
+                    transformStyle: shouldReduceMotion ? "flat" : "preserve-3d",
+                    perspective: shouldReduceMotion ? "none" : "1000px"
                   }}
-                  whileHover={{
+                  whileHover={shouldReduceMotion ? undefined : {
                     scale: 1.05,
                     rotateX: 5,
                     rotateY: -5,
@@ -218,7 +219,7 @@ export default function LandingPage() {
 
                   <motion.div
                     className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 relative"
-                    style={{ transform: "translateZ(30px)" }}
+                    style={{ transform: shouldReduceMotion ? "none" : "translateZ(30px)" }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-sky-400/20 to-blue-600/20 rounded-2xl group-hover:scale-110 transition-transform duration-500" />
                     <Icon className="w-7 h-7 text-sky-400 relative z-10" />
@@ -226,13 +227,13 @@ export default function LandingPage() {
 
                   <motion.h3
                     className="text-xl font-semibold mb-3 text-white"
-                    style={{ transform: "translateZ(20px)" }}
+                    style={{ transform: shouldReduceMotion ? "none" : "translateZ(20px)" }}
                   >
                     {feature.title}
                   </motion.h3>
                   <motion.p
                     className="text-sm text-slate-400 leading-relaxed"
-                    style={{ transform: "translateZ(10px)" }}
+                    style={{ transform: shouldReduceMotion ? "none" : "translateZ(10px)" }}
                   >
                     {feature.description}
                   </motion.p>
@@ -247,9 +248,10 @@ export default function LandingPage() {
       <section id="testimonials" className="py-24 px-6 relative">
         <div className="max-w-6xl mx-auto relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={shouldReduceMotion ? { duration: 0 } : undefined}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -263,7 +265,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
-                quote: "DevBattle transformed how I track my progress. The gamification makes me actually excited to contribute daily.",
+                quote: "CodePulse transformed how I track my progress. The gamification makes me actually excited to contribute daily.",
                 name: "Alex Rivera",
                 role: "Senior Dev @ Google",
                 avatar: "AR",
@@ -283,10 +285,10 @@ export default function LandingPage() {
             ].map((testimonial, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
+                transition={shouldReduceMotion ? { duration: 0 } : { delay: i * 0.1 }}
                 className="rounded-[24px] p-7 relative"
                 style={{
                   background: "linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6))",
@@ -324,9 +326,10 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center relative">
           <div className="absolute inset-0 bg-sky-500/10 rounded-[32px] blur-3xl" />
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={shouldReduceMotion ? { duration: 0 } : undefined}
             className="rounded-[32px] p-12 md:p-16 relative"
             style={{
               background: "linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6))",
@@ -343,8 +346,8 @@ export default function LandingPage() {
             </p>
             <Link href="/auth/login">
               <motion.div
-                whileHover={{ scale: 1.04, boxShadow: "0 12px 40px rgba(14, 165, 233, 0.4)" }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={shouldReduceMotion ? undefined : { scale: 1.04, boxShadow: "0 12px 40px rgba(14, 165, 233, 0.4)" }}
+                whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-white font-semibold text-lg transition-all"
                 style={{
                   background: "linear-gradient(135deg, #0ea5e9, #3b82f6)",
@@ -364,8 +367,8 @@ export default function LandingPage() {
       <footer className="border-t border-sky-500/10 py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="DevBattle Logo" width={32} height={32} className="rounded-lg shadow-sm shadow-sky-500/20" />
-            <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">DevBattle</span>
+            <Image src="/logo.png" alt="CodePulse Logo" width={32} height={32} className="rounded-lg shadow-sm shadow-sky-500/20" />
+            <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500">CodePulse</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-slate-400">
             <Link href="#" className="hover:text-sky-400 transition-colors">About</Link>
@@ -378,7 +381,7 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-col items-end gap-1">
             <div className="text-xs text-slate-500">
-              © 2024 DevBattle. All rights reserved.
+              © 2024 CodePulse. All rights reserved.
             </div>
             <div className="text-xs text-slate-500 flex items-center gap-1">
               Built with <span className="text-sky-400">💙</span> by{" "}
