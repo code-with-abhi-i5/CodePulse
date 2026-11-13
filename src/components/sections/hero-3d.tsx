@@ -1,8 +1,7 @@
 "use client";
 
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowRight,
   Play,
@@ -35,6 +34,8 @@ const INTENSITY_COLORS = [
 const CHART_DOTS: [number, number][] = [[60, 65], [120, 40], [180, 55], [240, 25], [300, 35], [360, 15]];
 
 export function Hero3D() {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
     <section
       className="relative min-h-screen flex items-center pt-16 overflow-hidden"
@@ -42,125 +43,185 @@ export function Hero3D() {
         background: "transparent",
       }}
     >
-      {/* CSS Keyframe Animations */}
+      {/* CSS Keyframe Animations with prefers-reduced-motion support */}
       <style>{`
-        @keyframes hero-float {
-          0%, 100% { transform: rotateX(8deg) rotateY(-12deg) translateY(0px) scale(1); }
-          25% { transform: rotateX(10deg) rotateY(-10deg) translateY(-10px) scale(1.005); }
-          50% { transform: rotateX(12deg) rotateY(-7deg) translateY(-20px) scale(1.01); }
-          75% { transform: rotateX(9deg) rotateY(-11deg) translateY(-8px) scale(1.003); }
+        @media (prefers-reduced-motion: no-preference) {
+          @keyframes hero-float {
+            0%, 100% { transform: rotateX(8deg) rotateY(-12deg) translateY(0px) scale(1); }
+            25% { transform: rotateX(10deg) rotateY(-10deg) translateY(-10px) scale(1.005); }
+            50% { transform: rotateX(12deg) rotateY(-7deg) translateY(-20px) scale(1.01); }
+            75% { transform: rotateX(9deg) rotateY(-11deg) translateY(-8px) scale(1.003); }
+          }
+          @keyframes hero-float-card {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(14px) scale(1.02); }
+          }
+          @keyframes hero-float-reverse {
+            0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+            50% { transform: translateY(-18px) rotate(3deg) scale(1.03); }
+          }
+          @keyframes hero-float-slow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            25% { transform: translateY(-6px) rotate(-1deg); }
+            50% { transform: translateY(-14px) rotate(-3deg); }
+            75% { transform: translateY(-4px) rotate(-1deg); }
+          }
+          @keyframes hero-float-gentle {
+            0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+            25% { transform: translateY(-12px) translateX(8px) rotate(1deg); }
+            50% { transform: translateY(2px) translateX(4px) rotate(0deg); }
+            75% { transform: translateY(8px) translateX(-5px) rotate(-1deg); }
+          }
+          @keyframes hero-glow-pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+          }
+          @keyframes hero-line-draw {
+            from { stroke-dashoffset: 600; }
+            to { stroke-dashoffset: 0; }
+          }
+          @keyframes hero-bar-1 {
+            0%, 100% { height: 40%; } 25% { height: 70%; } 50% { height: 30%; } 75% { height: 55%; }
+          }
+          @keyframes hero-bar-2 {
+            0%, 100% { height: 65%; } 25% { height: 40%; } 50% { height: 85%; } 75% { height: 50%; }
+          }
+          @keyframes hero-bar-3 {
+            0%, 100% { height: 45%; } 25% { height: 75%; } 50% { height: 35%; } 75% { height: 60%; }
+          }
+          @keyframes hero-bar-4 {
+            0%, 100% { height: 80%; } 25% { height: 50%; } 50% { height: 90%; } 75% { height: 45%; }
+          }
+          @keyframes hero-bar-5 {
+            0%, 100% { height: 55%; } 25% { height: 80%; } 50% { height: 40%; } 75% { height: 70%; }
+          }
+          @keyframes hero-bar-6 {
+            0%, 100% { height: 70%; } 25% { height: 45%; } 50% { height: 85%; } 75% { height: 55%; }
+          }
+          @keyframes hero-bar-7 {
+            0%, 100% { height: 90%; } 25% { height: 60%; } 50% { height: 75%; } 75% { height: 95%; }
+          }
+          @keyframes hero-donut-spin {
+            from { transform: rotate(-90deg); }
+            to { transform: rotate(270deg); }
+          }
+          @keyframes hero-shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+          }
+          @keyframes hero-stat-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+            50% { transform: scale(1.03); box-shadow: 0 0 20px 2px rgba(56, 189, 248, 0.15); }
+          }
+          @keyframes hero-heatmap-wave {
+            0%, 100% { transform: scaleY(1); opacity: 1; }
+            50% { transform: scaleY(1.4); opacity: 0.8; }
+          }
+          @keyframes hero-particle-float {
+            0% { transform: translateY(0) translateX(0) scale(0); opacity: 0; }
+            10% { opacity: 1; transform: scale(1); }
+            90% { opacity: 0.6; }
+            100% { transform: translateY(-800px) translateX(100px) scale(0.3); opacity: 0; }
+          }
+          @keyframes hero-border-glow {
+            0%, 100% { border-color: rgba(56, 189, 248, 0.1); box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 20px rgba(56,189,248,0.05); }
+            50% { border-color: rgba(56, 189, 248, 0.3); box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 40px rgba(56,189,248,0.15); }
+          }
+          @keyframes hero-chart-dot-pulse {
+            0%, 100% { r: 3; opacity: 0.8; }
+            50% { r: 5; opacity: 1; }
+          }
+          @keyframes hero-trend-arrow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+          }
+          @keyframes hero-scan-line {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% { top: 100%; opacity: 0; }
+          }
+
+          .hero-dashboard { animation: hero-float 7s ease-in-out infinite; }
+          .hero-card-1 { animation: hero-float-card 5s ease-in-out infinite; animation-delay: 0.5s; }
+          .hero-card-2 { animation: hero-float-reverse 6s ease-in-out infinite; animation-delay: 1s; }
+          .hero-card-3 { animation: hero-float-slow 8s ease-in-out infinite; animation-delay: 1.5s; }
+          .hero-card-4 { animation: hero-float-gentle 7s ease-in-out infinite; animation-delay: 2s; }
+          .hero-glow { animation: hero-glow-pulse 4s ease-in-out infinite; }
+          .hero-chart-line { animation: hero-line-draw 2s ease-out forwards; stroke-dasharray: 600; stroke-dashoffset: 600; animation-delay: 1s; }
+          .hero-bar-1 { animation: hero-bar-1 3s ease-in-out infinite; }
+          .hero-bar-2 { animation: hero-bar-2 3.5s ease-in-out infinite; animation-delay: 0.2s; }
+          .hero-bar-3 { animation: hero-bar-3 2.8s ease-in-out infinite; animation-delay: 0.4s; }
+          .hero-bar-4 { animation: hero-bar-4 3.2s ease-in-out infinite; animation-delay: 0.6s; }
+          .hero-bar-5 { animation: hero-bar-5 3.7s ease-in-out infinite; animation-delay: 0.3s; }
+          .hero-bar-6 { animation: hero-bar-6 2.9s ease-in-out infinite; animation-delay: 0.5s; }
+          .hero-bar-7 { animation: hero-bar-7 3.4s ease-in-out infinite; animation-delay: 0.7s; }
+          .hero-donut-ring { animation: hero-donut-spin 8s linear infinite; }
+          .hero-shimmer { background: linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.08) 50%, transparent 100%); background-size: 200% 100%; animation: hero-shimmer 3s ease-in-out infinite; }
+          .hero-stat-pulse { animation: hero-stat-pulse 4s ease-in-out infinite; }
+          .hero-border-glow { animation: hero-border-glow 5s ease-in-out infinite; }
+          .hero-chart-dot { animation: hero-chart-dot-pulse 2s ease-in-out infinite; }
+          .hero-trend-arrow { animation: hero-trend-arrow 1.5s ease-in-out infinite; }
+          .hero-scan-line { animation: hero-scan-line 4s linear infinite; }
+          .hero-particle { animation: hero-particle-float linear infinite; }
         }
-        @keyframes hero-float-card {
-          0%, 100% { transform: translateY(0px) scale(1); }
-          50% { transform: translateY(14px) scale(1.02); }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-dashboard,
+          .hero-card-1,
+          .hero-card-2,
+          .hero-card-3,
+          .hero-card-4,
+          .hero-glow,
+          .hero-chart-line,
+          .hero-bar-1,
+          .hero-bar-2,
+          .hero-bar-3,
+          .hero-bar-4,
+          .hero-bar-5,
+          .hero-bar-6,
+          .hero-bar-7,
+          .hero-donut-ring,
+          .hero-shimmer,
+          .hero-stat-pulse,
+          .hero-border-glow,
+          .hero-chart-dot,
+          .hero-trend-arrow,
+          .hero-scan-line,
+          .hero-particle,
+          .hero-heatmap-wave {
+            animation: none !important;
+            transition: none !important;
+          }
+
+          .hero-dashboard {
+            transform: none !important;
+          }
+
+          .hero-card-1,
+          .hero-card-2,
+          .hero-card-3,
+          .hero-card-4 {
+            transform: none !important;
+          }
+
+          .hero-chart-line {
+            stroke-dashoffset: 0 !important;
+          }
+
+          .hero-bar-1 { height: 40% !important; }
+          .hero-bar-2 { height: 65% !important; }
+          .hero-bar-3 { height: 45% !important; }
+          .hero-bar-4 { height: 80% !important; }
+          .hero-bar-5 { height: 55% !important; }
+          .hero-bar-6 { height: 70% !important; }
+          .hero-bar-7 { height: 90% !important; }
+
+          .hero-particle,
+          .hero-scan-line {
+            display: none !important;
+          }
         }
-        @keyframes hero-float-reverse {
-          0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
-          50% { transform: translateY(-18px) rotate(3deg) scale(1.03); }
-        }
-        @keyframes hero-float-slow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          25% { transform: translateY(-6px) rotate(-1deg); }
-          50% { transform: translateY(-14px) rotate(-3deg); }
-          75% { transform: translateY(-4px) rotate(-1deg); }
-        }
-        @keyframes hero-float-gentle {
-          0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
-          25% { transform: translateY(-12px) translateX(8px) rotate(1deg); }
-          50% { transform: translateY(2px) translateX(4px) rotate(0deg); }
-          75% { transform: translateY(8px) translateX(-5px) rotate(-1deg); }
-        }
-        @keyframes hero-glow-pulse {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.1); }
-        }
-        @keyframes hero-line-draw {
-          from { stroke-dashoffset: 600; }
-          to { stroke-dashoffset: 0; }
-        }
-        @keyframes hero-bar-1 {
-          0%, 100% { height: 40%; } 25% { height: 70%; } 50% { height: 30%; } 75% { height: 55%; }
-        }
-        @keyframes hero-bar-2 {
-          0%, 100% { height: 65%; } 25% { height: 40%; } 50% { height: 85%; } 75% { height: 50%; }
-        }
-        @keyframes hero-bar-3 {
-          0%, 100% { height: 45%; } 25% { height: 75%; } 50% { height: 35%; } 75% { height: 60%; }
-        }
-        @keyframes hero-bar-4 {
-          0%, 100% { height: 80%; } 25% { height: 50%; } 50% { height: 90%; } 75% { height: 45%; }
-        }
-        @keyframes hero-bar-5 {
-          0%, 100% { height: 55%; } 25% { height: 80%; } 50% { height: 40%; } 75% { height: 70%; }
-        }
-        @keyframes hero-bar-6 {
-          0%, 100% { height: 70%; } 25% { height: 45%; } 50% { height: 85%; } 75% { height: 55%; }
-        }
-        @keyframes hero-bar-7 {
-          0%, 100% { height: 90%; } 25% { height: 60%; } 50% { height: 75%; } 75% { height: 95%; }
-        }
-        @keyframes hero-donut-spin {
-          from { transform: rotate(-90deg); }
-          to { transform: rotate(270deg); }
-        }
-        @keyframes hero-shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        @keyframes hero-stat-pulse {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
-          50% { transform: scale(1.03); box-shadow: 0 0 20px 2px rgba(56, 189, 248, 0.15); }
-        }
-        @keyframes hero-heatmap-wave {
-          0%, 100% { transform: scaleY(1); opacity: 1; }
-          50% { transform: scaleY(1.4); opacity: 0.8; }
-        }
-        @keyframes hero-particle-float {
-          0% { transform: translateY(0) translateX(0) scale(0); opacity: 0; }
-          10% { opacity: 1; transform: scale(1); }
-          90% { opacity: 0.6; }
-          100% { transform: translateY(-800px) translateX(100px) scale(0.3); opacity: 0; }
-        }
-        @keyframes hero-border-glow {
-          0%, 100% { border-color: rgba(56, 189, 248, 0.1); box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 20px rgba(56,189,248,0.05); }
-          50% { border-color: rgba(56, 189, 248, 0.3); box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 40px rgba(56,189,248,0.15); }
-        }
-        @keyframes hero-chart-dot-pulse {
-          0%, 100% { r: 3; opacity: 0.8; }
-          50% { r: 5; opacity: 1; }
-        }
-        @keyframes hero-trend-arrow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
-        }
-        @keyframes hero-scan-line {
-          0% { top: 0%; opacity: 0; }
-          10% { opacity: 0.6; }
-          90% { opacity: 0.6; }
-          100% { top: 100%; opacity: 0; }
-        }
-        .hero-dashboard { animation: hero-float 7s ease-in-out infinite; }
-        .hero-card-1 { animation: hero-float-card 5s ease-in-out infinite; animation-delay: 0.5s; }
-        .hero-card-2 { animation: hero-float-reverse 6s ease-in-out infinite; animation-delay: 1s; }
-        .hero-card-3 { animation: hero-float-slow 8s ease-in-out infinite; animation-delay: 1.5s; }
-        .hero-card-4 { animation: hero-float-gentle 7s ease-in-out infinite; animation-delay: 2s; }
-        .hero-glow { animation: hero-glow-pulse 4s ease-in-out infinite; }
-        .hero-chart-line { animation: hero-line-draw 2s ease-out forwards; stroke-dasharray: 600; stroke-dashoffset: 600; animation-delay: 1s; }
-        .hero-bar-1 { animation: hero-bar-1 3s ease-in-out infinite; }
-        .hero-bar-2 { animation: hero-bar-2 3.5s ease-in-out infinite; animation-delay: 0.2s; }
-        .hero-bar-3 { animation: hero-bar-3 2.8s ease-in-out infinite; animation-delay: 0.4s; }
-        .hero-bar-4 { animation: hero-bar-4 3.2s ease-in-out infinite; animation-delay: 0.6s; }
-        .hero-bar-5 { animation: hero-bar-5 3.7s ease-in-out infinite; animation-delay: 0.3s; }
-        .hero-bar-6 { animation: hero-bar-6 2.9s ease-in-out infinite; animation-delay: 0.5s; }
-        .hero-bar-7 { animation: hero-bar-7 3.4s ease-in-out infinite; animation-delay: 0.7s; }
-        .hero-donut-ring { animation: hero-donut-spin 8s linear infinite; }
-        .hero-shimmer { background: linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.08) 50%, transparent 100%); background-size: 200% 100%; animation: hero-shimmer 3s ease-in-out infinite; }
-        .hero-stat-pulse { animation: hero-stat-pulse 4s ease-in-out infinite; }
-        .hero-border-glow { animation: hero-border-glow 5s ease-in-out infinite; }
-        .hero-chart-dot { animation: hero-chart-dot-pulse 2s ease-in-out infinite; }
-        .hero-trend-arrow { animation: hero-trend-arrow 1.5s ease-in-out infinite; }
-        .hero-scan-line { animation: hero-scan-line 4s linear infinite; }
-        .hero-particle { animation: hero-particle-float linear infinite; }
       `}</style>
 
       {/* Background glow effects */}
@@ -189,21 +250,23 @@ export function Hero3D() {
       />
 
       {/* Floating Particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-sky-400 rounded-full hero-particle"
-            style={{
-              left: `${((i * 37 + 17) % 96) + 2}%`,
-              bottom: "-20px",
-              animationDuration: `${5 + ((i * 7) % 10)}s`,
-              animationDelay: `${((i * 1.3) % 5).toFixed(2)}s`,
-              boxShadow: "0 0 10px 2px rgba(56, 189, 248, 0.6)",
-            }}
-          />
-        ))}
-      </div>
+      {!shouldReduceMotion && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-sky-400 rounded-full hero-particle"
+              style={{
+                left: `${((i * 37 + 17) % 96) + 2}%`,
+                bottom: "-20px",
+                animationDuration: `${5 + ((i * 7) % 10)}s`,
+                animationDelay: `${((i * 1.3) % 5).toFixed(2)}s`,
+                boxShadow: "0 0 10px 2px rgba(56, 189, 248, 0.6)",
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 w-full grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
@@ -211,9 +274,9 @@ export function Hero3D() {
         <div className="order-2 lg:order-1">
           {/* Badge */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.1 }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm mb-8"
             style={{
               background: "rgba(56, 189, 248, 0.08)",
@@ -228,9 +291,9 @@ export function Hero3D() {
 
           {/* Headline */}
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.2 }}
             className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[0.95] tracking-tight mb-6"
           >
             Your GitHub,{" "}
@@ -241,9 +304,9 @@ export function Hero3D() {
 
           {/* Subtitle */}
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.3 }}
             className="text-lg text-slate-400 max-w-lg mb-10"
           >
             Track your coding journey with beautiful analytics. Compete with
@@ -252,15 +315,15 @@ export function Hero3D() {
 
           {/* CTA Buttons */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.4 }}
             className="flex flex-col sm:flex-row items-start gap-4"
           >
             <Link href="/dashboard">
               <motion.div
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={shouldReduceMotion ? undefined : { scale: 1.03 }}
+                whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
                 className="flex items-center gap-2 px-8 py-4 rounded-2xl text-white font-semibold text-lg transition-shadow"
                 style={{
                   background: "linear-gradient(135deg, #0ea5e9, #3b82f6)",
@@ -274,8 +337,8 @@ export function Hero3D() {
             </Link>
             <Link href="/dashboard">
               <motion.div
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={shouldReduceMotion ? undefined : { scale: 1.03 }}
+                whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
                 className="flex items-center gap-2 px-8 py-4 rounded-2xl font-semibold text-lg transition-colors"
                 style={{
                   background: "rgba(56, 189, 248, 0.08)",
@@ -291,21 +354,25 @@ export function Hero3D() {
 
         {/* Right - 3D Analytics Dashboard */}
         <motion.div
-          initial={{ opacity: 0, x: 60 }}
+          initial={shouldReduceMotion ? false : { opacity: 0, x: 60 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{
-            delay: 0.5,
-            type: "spring",
-            stiffness: 80,
-            damping: 20,
-          }}
+          transition={
+            shouldReduceMotion
+              ? { duration: 0 }
+              : {
+                  delay: 0.5,
+                  type: "spring",
+                  stiffness: 80,
+                  damping: 20,
+                }
+          }
           className="order-1 lg:order-2 relative"
-          style={{ perspective: "1200px" }}
+          style={{ perspective: shouldReduceMotion ? "none" : "1200px" }}
         >
           {/* ====== Main Dashboard Card (3D Tilted + Floating) ====== */}
           <div
             className="hero-dashboard relative"
-            style={{ transformStyle: "preserve-3d" }}
+            style={{ transformStyle: shouldReduceMotion ? "flat" : "preserve-3d" }}
           >
             <div
               className="relative rounded-2xl p-6 backdrop-blur-xl overflow-hidden hero-border-glow"
@@ -330,7 +397,7 @@ export function Hero3D() {
                   className="text-xs font-medium"
                   style={{ color: "rgba(56, 189, 248, 0.6)" }}
                 >
-                  DevBattle Analytics
+                  CodePulse Analytics
                 </span>
               </div>
 
