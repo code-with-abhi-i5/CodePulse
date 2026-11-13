@@ -21,7 +21,6 @@ import {
   Search,
   Settings,
   ChevronLeft,
-  ChevronRight,
   LogOut,
   Zap,
   Menu,
@@ -82,7 +81,7 @@ function SidebarLogo({ collapsed }: { collapsed: boolean }) {
         whileTap={{ scale: 0.95 }}
         transition={{ type: "spring", stiffness: 400, damping: 15 }}
       >
-        <Image src="/logo.png" alt="DevBattle Logo" width={36} height={36} className="rounded-xl relative z-10" />
+        <Image src="/logo.png" alt="CodePulse Logo" width={36} height={36} className="rounded-xl relative z-10" />
         <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-500 to-emerald-500 opacity-40 blur-lg" />
       </motion.div>
 
@@ -96,7 +95,7 @@ function SidebarLogo({ collapsed }: { collapsed: boolean }) {
             className="overflow-hidden"
           >
             <span className="gradient-text whitespace-nowrap text-xl font-bold tracking-tight">
-              DevBattle
+              CodePulse
             </span>
           </motion.div>
         )}

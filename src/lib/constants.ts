@@ -1,6 +1,6 @@
-export const APP_NAME = "DevBattle";
+export const APP_NAME = "CodePulse";
 export const APP_DESCRIPTION = "The Ultimate GitHub Developer Analytics, Comparison & Gamification Platform";
-export const APP_URL = "https://devbattle.dev";
+export const APP_URL = "https://codepulse.dev";
 
 export const LANGUAGE_COLORS: Record<string, string> = {
   TypeScript: "#3178c6",

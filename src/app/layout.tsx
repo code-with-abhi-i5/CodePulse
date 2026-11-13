@@ -23,8 +23,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | DevBattle",
-    default: "DevBattle — GitHub Developer Analytics & Gamification Platform",
+    template: "%s | CodePulse",
+    default: "CodePulse — GitHub Developer Analytics & Gamification Platform",
   },
   description:
     "The ultimate platform for GitHub developer analytics, comparison, gamification, and leaderboards. Track your coding journey, compete with friends, and level up your development skills.",
@@ -54,17 +54,17 @@ export const metadata: Metadata = {
     "leaderboard",
     "coding challenges",
   ],
-  authors: [{ name: "DevBattle" }],
+  authors: [{ name: "CodePulse" }],
   openGraph: {
-    title: "DevBattle — GitHub Developer Analytics & Gamification",
+    title: "CodePulse — GitHub Developer Analytics & Gamification",
     description:
       "Track, compare, and gamify your GitHub development journey. The most beautiful developer analytics platform.",
     type: "website",
-    siteName: "DevBattle",
+    siteName: "CodePulse",
   },
   twitter: {
     card: "summary_large_image",
-    title: "DevBattle — GitHub Developer Analytics & Gamification",
+    title: "CodePulse — GitHub Developer Analytics & Gamification",
     description:
       "Track, compare, and gamify your GitHub development journey.",
   },

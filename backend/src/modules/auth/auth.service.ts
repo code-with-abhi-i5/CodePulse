@@ -265,9 +265,9 @@ export class AuthService {
     await transporter.sendMail({
       from,
       to: email,
-      subject: 'Reset your DevBattle password',
+      subject: 'Reset your CodePulse password',
       text: `Use this link within 30 minutes to reset your password: ${resetUrl}`,
-      html: `<p>We received a request to reset your DevBattle password.</p><p><a href="${resetUrl}">Reset your password</a></p><p>This link expires in 30 minutes and can only be used once. If you did not request this, you can ignore this email.</p>`,
+      html: `<p>We received a request to reset your CodePulse password.</p><p><a href="${resetUrl}">Reset your password</a></p><p>This link expires in 30 minutes and can only be used once. If you did not request this, you can ignore this email.</p>`,
     });
   }
 
