@@ -11,6 +11,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { DashboardBreadcrumbs } from "@/components/layout/breadcrumbs";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { ShortcutsModal } from "@/components/modals/shortcuts-modal";
 import { PageTransition } from "@/components/animations/page-transition";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -25,10 +26,32 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const isMobile = useIsMobile();
   const router = useRouter();
   const hasToken = useHasAuthToken();
   const { data: user, isLoading, isError, error, refetch } = useCurrentUser();
+
+  // Global '?' key listener for Keyboard Shortcuts Guide
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl instanceof HTMLInputElement ||
+        activeEl instanceof HTMLTextAreaElement ||
+        (activeEl instanceof HTMLElement && activeEl.isContentEditable);
+
+      if (isInput) return;
+
+      if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!hasToken) {
@@ -117,6 +140,12 @@ export default function DashboardLayout({
       <CommandPalette
         open={commandPaletteOpen}
         onOpenChange={setCommandPaletteOpen}
+      />
+
+      {/* Keyboard Shortcuts Guide Modal */}
+      <ShortcutsModal
+        isOpen={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
       />
     </div>
   );
