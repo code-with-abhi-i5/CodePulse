@@ -37,6 +37,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 interface AchievementCardProps {
   achievement: Achievement;
   className?: string;
+  onClick?: () => void;
 }
 
 // ===========================
@@ -46,6 +47,7 @@ interface AchievementCardProps {
 export function AchievementCard({
   achievement,
   className,
+  onClick,
 }: AchievementCardProps) {
   const rarity = RARITY_COLORS[achievement.rarity];
   const Icon = ICON_MAP[achievement.icon] ?? Award;
@@ -81,6 +83,19 @@ export function AchievementCard({
   return (
     <motion.div
       id={`achievement-${achievement.id}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       style={{
         rotateX: isHovered ? rotateX : 0,
         rotateY: isHovered ? rotateY : 0,
