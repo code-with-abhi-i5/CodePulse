@@ -1,0 +1,172 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: executionrunnerpools.codepulse.io
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+    description: "Automated Self-Healing Execution Runner Pod Pool for CodePulse battle matches"
+  labels:
+    app.kubernetes.io/name: codepulse-operator
+    app.kubernetes.io/part-of: codepulse
+spec:
+  group: codepulse.io
+  names:
+    kind: ExecutionRunnerPool
+    listKind: ExecutionRunnerPoolList
+    plural: executionrunnerpools
+    singular: executionrunnerpool
+    shortNames:
+      - erp
+      - runnerpool
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+        scale:
+          specReplicasPath: .spec.warmPoolSize
+          statusReplicasPath: .status.warmPods
+          labelSelectorPath: .status.selector
+      schema:
+        openAPIV3Schema:
+          type: object
+          description: ExecutionRunnerPool defines a pool of pre-warmed sandboxed execution runner pods.
+          required:
+            - spec
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              required:
+                - warmPoolSize
+                - maxConcurrentBusy
+                - runnerImage
+              properties:
+                warmPoolSize:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 5
+                  description: Minimum number of pre-warmed, idle runner pods ready for immediate dispatch.
+                maxConcurrentBusy:
+                  type: integer
+                  minimum: 1
+                  maximum: 500
+                  default: 50
+                  description: Maximum capacity of concurrent busy match execution pods.
+                runnerImage:
+                  type: string
+                  default: "ghcr.io/codepulse/execution-sandbox:latest"
+                  description: Container image for sandboxed code execution runner.
+                maxMemoryMb:
+                  type: integer
+                  default: 512
+                  minimum: 64
+                  maximum: 8192
+                  description: Maximum memory allowed per runner pod before triggering instant self-healing recycling.
+                deepProbeIntervalSeconds:
+                  type: integer
+                  default: 2
+                  minimum: 1
+                  maximum: 30
+                  description: Polling frequency in seconds for /healthz/deep memory and zombie process inspections.
+                deepProbePath:
+                  type: string
+                  default: "/healthz/deep"
+                  description: HTTP probe path for internal runtime health checking.
+                recycleTimeoutSeconds:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                  maximum: 15
+                  description: Strict deadline in seconds for pod recycling, termination, and warm pool replenishment.
+                preWarmStandbyCount:
+                  type: integer
+                  default: 2
+                  minimum: 1
+                  maximum: 20
+                  description: Number of instant standby pods kept initialized to guarantee < 5s replenishment.
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum:
+                    - Initializing
+                    - Ready
+                    - Healing
+                    - Degraded
+                  default: Initializing
+                warmPods:
+                  type: integer
+                  default: 0
+                  description: Total healthy, pre-warmed standby pods available.
+                busyPods:
+                  type: integer
+                  default: 0
+                  description: Total actively executing runner pods.
+                recycledPodsTotal:
+                  type: integer
+                  default: 0
+                  description: Cumulative count of self-healed, terminated poisoned pods.
+                lastRecycleDurationMs:
+                  type: number
+                  default: 0
+                  description: Latency in milliseconds of the most recent pod recycling operation.
+                avgRecycleDurationMs:
+                  type: number
+                  default: 0
+                  description: Rolling average pod recycle duration in milliseconds.
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                      - lastTransitionTime
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                selector:
+                  type: string
+                  description: Pod label selector string for Kubernetes scaling.
+      additionalPrinterColumns:
+        - name: Warm
+          type: integer
+          jsonPath: .status.warmPods
+          description: Pre-warmed standby pods available
+        - name: Busy
+          type: integer
+          jsonPath: .status.busyPods
+          description: Running match execution pods
+        - name: Recycled
+          type: integer
+          jsonPath: .status.recycledPodsTotal
+          description: Total poisoned pods self-healed
+        - name: LastRecycleMs
+          type: number
+          jsonPath: .status.lastRecycleDurationMs
+          description: Last recycle latency in ms
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+          description: Pool health status phase
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp

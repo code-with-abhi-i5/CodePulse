@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: codepulse-runners
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: codepulse-runner-operator
+  namespace: codepulse-runners
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: codepulse-runner-operator-role
+rules:
+  - apiGroups: [""]
+    resources:
+      ["pods", "pods/status", "pods/exec", "pods/log", "services", "endpoints"]
+    verbs:
+      [
+        "get",
+        "list",
+        "watch",
+        "create",
+        "update",
+        "patch",
+        "delete",
+        "deletecollection",
+      ]
+  - apiGroups: ["codepulse.io"]
+    resources:
+      [
+        "executionrunnerpools",
+        "executionrunnerpools/status",
+        "executionrunnerpools/scale",
+      ]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["events.k8s.io", ""]
+    resources: ["events"]
+    verbs: ["create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: codepulse-runner-operator-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: codepulse-runner-operator-role
+subjects:
+  - kind: ServiceAccount
+    name: codepulse-runner-operator
+    namespace: codepulse-runners
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codepulse-runner-operator
+  namespace: codepulse-runners
+  labels:
+    app.kubernetes.io/name: codepulse-runner-operator
+    app.kubernetes.io/component: operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: codepulse-runner-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: codepulse-runner-operator
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: codepulse-runner-operator
+      containers:
+        - name: operator
+          image: ghcr.io/codepulse/runner-operator:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: metrics
+              containerPort: 9090
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          env:
+            - name: OPERATOR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: METRICS_PORT
+              value: "9090"
+            - name: LOG_LEVEL
+              value: "info"
+---
+apiVersion: codepulse.io/v1alpha1
+kind: ExecutionRunnerPool
+metadata:
+  name: tournament-runner-pool
+  namespace: codepulse-runners
+spec:
+  warmPoolSize: 5
+  maxConcurrentBusy: 50
+  runnerImage: "ghcr.io/codepulse/execution-sandbox:latest"
+  maxMemoryMb: 512
+  deepProbeIntervalSeconds: 2
+  deepProbePath: "/healthz/deep"
+  recycleTimeoutSeconds: 5
+  preWarmStandbyCount: 2
