@@ -19,6 +19,7 @@ import { ProfileQrModal } from "@/components/modals/profile-qr-modal";
 import { ProfileBadgeModal } from "@/components/modals/profile-badge-modal";
 import { BadgeShowcase } from "@/components/profile/badge-showcase";
 import { ProfileShareModal } from "@/components/modals/profile-share-modal";
+import { BadgeCredentialModal } from "@/components/modals/badge-credential-modal";
 import { SocialLinksManager } from "@/components/profile/social-links-manager";
 import { StatusBadgeEditorModal } from "@/components/profile/status-badge-editor";
 
@@ -27,6 +28,7 @@ export default function ProfilePage() {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [selectedCredentialBadge, setSelectedCredentialBadge] = useState<Badge | null>(null);
 
   if (isLoading) {
     return (
@@ -91,6 +93,7 @@ export default function ProfilePage() {
   const stats = user.stats || { totalCommits: 0, totalPRs: 0, totalReviews: 0, totalStars: 0, streak: 0, totalRepos: 0, followers: 0, following: 0 };
   
   // Map badges structure
+  const displayBadges = user.badges || [];
   const displayRepos = user.repositories || [];
   const displayActivities = user.activities || [];
   const displayLanguages = user.languages || [];
@@ -243,8 +246,44 @@ export default function ProfilePage() {
         user={user}
       />
 
+      <BadgeCredentialModal
+        isOpen={!!selectedCredentialBadge}
+        onClose={() => setSelectedCredentialBadge(null)}
+        badge={selectedCredentialBadge}
+        username={user?.username || "developer"}
+      />
+
       {/* Badges */}
       <BadgeShowcase key={`gallery-${user.id}`} userId={user.id} badges={user.badges} />
+
+      {/* Verifiable Credentials */}
+      {displayBadges.length > 0 && (
+        <div className="glass-card rounded-[20px] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Shield className="w-5 h-5 text-purple-400" />
+              Verifiable Credentials (W3C DID)
+            </h2>
+            <span className="text-xs text-muted-foreground">Click a badge to verify or export W3C Credential</span>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {displayBadges.map((badge: any) => (
+              <motion.div
+                key={badge.id}
+                whileHover={{ scale: 1.05 }}
+                onClick={() => setSelectedCredentialBadge(badge)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:border-primary/50 transition-colors"
+              >
+                <span className="text-lg">🏆</span>
+                <div>
+                  <div className="text-sm font-medium">{badge.name}</div>
+                  <div className="text-xs text-muted-foreground capitalize">{badge.tier}</div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Heatmap + Language */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

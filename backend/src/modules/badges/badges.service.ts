@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { VerifiableCredentialsService } from '../identity/verifiable-credentials.service';
 
 @Injectable()
 export class BadgesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly vcService?: VerifiableCredentialsService,
+  ) {}
 
   async getAllBadges() {
     return this.prisma.badge.findMany();
@@ -37,10 +41,30 @@ export class BadgesService {
       throw new NotFoundException(`Badge ${badgeId} not found`);
     }
 
-    return this.prisma.userBadge.upsert({
+    const userBadge = await this.prisma.userBadge.upsert({
       where: { userId_badgeId: { userId, badgeId } },
       update: {},
       create: { userId, badgeId },
+      include: { badge: true, user: true },
     });
+
+    // Automatically issue W3C Verifiable Credential if vcService is available
+    if (this.vcService) {
+      try {
+        await this.vcService.issueBadgeCredential(userId, badgeId);
+      } catch {
+        // Fall back gracefully if user record incomplete or deferred
+      }
+    }
+
+    return userBadge;
+  }
+
+  async exportBadgeCredential(userId: string, badgeId: string) {
+    if (!this.vcService) {
+      throw new NotFoundException('VerifiableCredentialsService is not enabled');
+    }
+    return this.vcService.issueBadgeCredential(userId, badgeId);
   }
 }
+

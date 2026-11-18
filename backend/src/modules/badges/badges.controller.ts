@@ -25,4 +25,13 @@ export class BadgesController {
   async awardBadge(@Param('userId') userId: string, @Param('badgeId') badgeId: string) {
     return this.badgesService.awardBadge(userId, badgeId);
   }
+
+  @Get('user/:userId/badge/:badgeId/credential')
+  @ApiOperation({ summary: 'Export W3C Verifiable Credential for an earned badge' })
+  async exportBadgeCredential(
+    @Param('userId') userId: string,
+    @Param('badgeId') badgeId: string,
+  ) {
+    return this.badgesService.exportBadgeCredential(userId, badgeId);
+  }
 }

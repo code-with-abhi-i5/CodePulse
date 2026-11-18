@@ -334,12 +334,15 @@ model Badge {
 }
 
 model UserBadge {
-  id       String   @id @default(uuid())
-  userId   String
-  badgeId  String
-  earnedAt DateTime @default(now())
-  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String    @id @default(uuid())
+  userId         String
+  badgeId        String
+  earnedAt       DateTime  @default(now())
+  credentialJwt  String?   @db.Text
+  credentialJwk  Json?
+  issuedAt       DateTime?
+  badge          Badge     @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, badgeId])
   @@map("user_badges")
