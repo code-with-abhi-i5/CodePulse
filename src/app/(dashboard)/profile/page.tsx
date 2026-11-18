@@ -22,6 +22,7 @@ import { ProfileShareModal } from "@/components/modals/profile-share-modal";
 import { BadgeCredentialModal } from "@/components/modals/badge-credential-modal";
 import { SocialLinksManager } from "@/components/profile/social-links-manager";
 import { StatusBadgeEditorModal } from "@/components/profile/status-badge-editor";
+import type { Badge } from "@/types";
 
 export default function ProfilePage() {
   const { data: user, isLoading } = useCurrentUser();

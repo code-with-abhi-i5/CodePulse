@@ -9,9 +9,9 @@ describe("BadgeCredentialModal", () => {
     name: "Grandmaster Contributor",
     description: "Achieved the highest rank in competitive coding battles",
     icon: "trophy",
-    tier: "DIAMOND",
+    tier: "diamond",
     category: "Competitive",
-    createdAt: new Date().toISOString(),
+    earnedAt: new Date().toISOString(),
   };
 
   const defaultProps = {
