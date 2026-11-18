@@ -7,12 +7,16 @@ import {
   Param,
   Query,
   BadRequestException,
+  ForbiddenException,
   ParseIntPipe,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BattlesService } from './battles.service';
 import { CreateBattleDto, UpdateBattleStatusDto } from './dto/battles.dto';
 import { SeasonResetService } from './season-reset.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('battles')
 @Controller('battles')
@@ -72,22 +76,36 @@ export class BattlesController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Challenge a user to a battle' })
-  async createBattle(@Body() dto: CreateBattleDto) {
+  async createBattle(@Request() req: any, @Body() dto: CreateBattleDto) {
+    if (req.user?.id && dto.challengerId && req.user.id !== dto.challengerId) {
+      throw new ForbiddenException('Cannot challenge on behalf of another user');
+    }
     return this.battlesService.createBattle(dto);
   }
 
   @Put(':id/status')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary:
-      'Update battle status (e.g., mark as completed and declare winner)',
+      'Update battle status (e.g., mark as completed, expired, or forfeited)',
   })
   async updateBattleStatus(
+    @Request() req: any,
     @Param('id') id: string,
     @Body() dto: UpdateBattleStatusDto,
   ) {
-    return this.battlesService.updateBattleStatus(id, dto);
+    return this.battlesService.updateBattleStatus(id, dto, req.user?.id);
+  }
+
+  @Post(':id/forfeit')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Forfeit an active battle' })
+  async forfeitBattle(@Request() req: any, @Param('id') id: string) {
+    return this.battlesService.forfeitBattle(id, req.user.id);
   }
 }

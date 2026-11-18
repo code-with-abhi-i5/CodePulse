@@ -33,4 +33,14 @@ export class UpdateBattleStatusDto {
   @IsString()
   @IsOptional()
   winnerId?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  forfeitedById?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  cancellationReason?: string;
 }

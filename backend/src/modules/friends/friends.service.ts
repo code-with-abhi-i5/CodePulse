@@ -1,21 +1,38 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  DeveloperGraphService,
+  GraphRecommendationResult,
+} from '../graph/developer-graph.service';
 
 @Injectable()
 export class FriendsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly graphService?: DeveloperGraphService,
+  ) {}
 
   async followUser(followerId: string, followingId: string) {
-    return this.prisma.follows.create({
+    const result = await this.prisma.follows.create({
       data: {
         followerId,
         followingId,
       },
     });
+
+    // Asynchronously synchronize FOLLOWS edge in developer graph
+    if (this.graphService) {
+      void this.graphService
+        .upsertFollowsEdge(followerId, followingId)
+        .catch(() => {});
+    }
+
+    return result;
   }
 
   async unfollowUser(followerId: string, followingId: string) {
-    return this.prisma.follows.delete({
+    const result = await this.prisma.follows.delete({
       where: {
         followerId_followingId: {
           followerId,
@@ -23,19 +40,41 @@ export class FriendsService {
         },
       },
     });
+
+    if (this.graphService) {
+      void this.graphService
+        .removeFollowsEdge(followerId, followingId)
+        .catch(() => {});
+    }
+
+    return result;
+  }
+
+  async getGraphRecommendations(
+    userId: string,
+    limit = 10,
+  ): Promise<GraphRecommendationResult[]> {
+    if (this.graphService) {
+      return this.graphService.getPeerRecommendations(userId, limit);
+    }
+    return [];
   }
 
   async getFollowers(userId: string) {
     return this.prisma.follows.findMany({
       where: { followingId: userId },
-      include: { follower: { select: { id: true, username: true, avatar: true } } },
+      include: {
+        follower: { select: { id: true, username: true, avatar: true } },
+      },
     });
   }
 
   async getFollowing(userId: string) {
     return this.prisma.follows.findMany({
       where: { followerId: userId },
-      include: { following: { select: { id: true, username: true, avatar: true } } },
+      include: {
+        following: { select: { id: true, username: true, avatar: true } },
+      },
     });
   }
 

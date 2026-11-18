@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -23,12 +23,21 @@ import { AdminModule } from './modules/admin/admin.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { DynamicConfigModule } from './config/dynamic-config.module';
+import { RepositoriesModule } from './modules/repositories/repositories.module';
+import { SecurityModule } from './modules/security/security.module';
+import { HealthModule } from './modules/health/health.module';
+import { CloudModule } from './modules/cloud/cloud.module';
+import { GraphModule } from './modules/graph/graph.module';
+import { ObservabilityModule } from './modules/observability/observability.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
+import { SystemMetricsService } from './common/services/system-metrics.service';
+import { LoadShedderMiddleware } from './common/middleware/load-shedder.middleware';
 
 @Module({
   imports: [
@@ -78,14 +87,26 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
     SettingsModule,
     RecommendationsModule,
     MetricsModule,
+    DynamicConfigModule,
+    RepositoriesModule,
+    SecurityModule,
+    HealthModule,
+    CloudModule,
+    GraphModule,
+    ObservabilityModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    SystemMetricsService,
     {
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(LoadShedderMiddleware).forRoutes('*');
+  }
+}
