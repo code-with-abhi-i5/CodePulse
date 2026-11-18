@@ -14,4 +14,10 @@ export class ChallengesScheduler {
     this.logger.log('Scheduling daily challenges generation...');
     await this.challengesQueue.add('generate-daily-challenges', {});
   }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async scheduleExpiredCleanup() {
+    this.logger.log('Scheduling expired challenges cleanup...');
+    await this.challengesQueue.add('cleanup-expired-challenges', {});
+  }
 }

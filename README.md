@@ -30,7 +30,7 @@ A heartfelt thank you to all the amazing developers contributing to **CodePulse*
         <sub><b>@code-with-abhi-i5</b></sub>
       </a><br />
       <sub>👑 Maintainer</sub><br />
-      <a href="https://github.com/code-with-abhi-i5/CodePulse/commits?author=code-with-abhi-i5"><sub>🔨 186 commits</sub></a>
+      <a href="https://github.com/code-with-abhi-i5/CodePulse/commits?author=code-with-abhi-i5"><sub>🔨 187 commits</sub></a>
     </td>
     <td align="center" width="160px">
       <a href="https://github.com/Babin123456">
