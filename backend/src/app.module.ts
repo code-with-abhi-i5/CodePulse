@@ -30,6 +30,7 @@ import { HealthModule } from './modules/health/health.module';
 import { CloudModule } from './modules/cloud/cloud.module';
 import { GraphModule } from './modules/graph/graph.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
+import { IdentityModule } from './modules/identity/identity.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -94,6 +95,7 @@ import { LoadShedderMiddleware } from './common/middleware/load-shedder.middlewa
     CloudModule,
     GraphModule,
     ObservabilityModule,
+    IdentityModule,
   ],
   controllers: [AppController],
   providers: [

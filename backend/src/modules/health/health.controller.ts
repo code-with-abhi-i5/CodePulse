@@ -33,8 +33,8 @@ import type {
   MultiCloudDrReport,
   CloudProvider,
 } from './multi-cloud-dr.service';
-import {
-  GeoDnsService,
+import { GeoDnsService } from './geo-dns.service';
+import type {
   GeoDnsStatusReport,
   RouteOptimizationDecision,
 } from './geo-dns.service';

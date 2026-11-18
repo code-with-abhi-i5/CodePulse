@@ -18,6 +18,7 @@ import {
 import { ProfileQrModal } from "@/components/modals/profile-qr-modal";
 import { ProfileBadgeModal } from "@/components/modals/profile-badge-modal";
 import { ProfileShareModal } from "@/components/modals/profile-share-modal";
+import { BadgeCredentialModal } from "@/components/modals/badge-credential-modal";
 import { SocialLinksManager } from "@/components/profile/social-links-manager";
 import { StatusBadgeEditorModal } from "@/components/profile/status-badge-editor";
 import type { Badge } from "@/types";
@@ -27,6 +28,7 @@ export default function ProfilePage() {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [selectedCredentialBadge, setSelectedCredentialBadge] = useState<Badge | null>(null);
 
   if (isLoading) {
     return (
@@ -245,16 +247,27 @@ export default function ProfilePage() {
         user={user}
       />
 
+      <BadgeCredentialModal
+        isOpen={!!selectedCredentialBadge}
+        onClose={() => setSelectedCredentialBadge(null)}
+        badge={selectedCredentialBadge}
+        username={user?.username || "developer"}
+      />
+
       {/* Badges */}
       {displayBadges.length > 0 && (
         <div className="glass-card rounded-[20px] p-6">
-          <h2 className="text-lg font-semibold mb-4">Badges</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Badges</h2>
+            <span className="text-xs text-muted-foreground">Click a badge to verify or export W3C Credential</span>
+          </div>
           <div className="flex flex-wrap gap-3">
             {displayBadges.map((badge) => (
               <motion.div
                 key={badge.id}
                 whileHover={{ scale: 1.05 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10"
+                onClick={() => setSelectedCredentialBadge(badge)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:border-primary/50 transition-colors"
               >
                 <span className="text-lg">🏆</span>
                 <div>

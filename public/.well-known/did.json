@@ -1,0 +1,27 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/suites/jws-2020/v1"
+  ],
+  "id": "did:web:codepulse.dev",
+  "verificationMethod": [
+    {
+      "id": "did:web:codepulse.dev#key-1",
+      "type": "JsonWebKey2020",
+      "controller": "did:web:codepulse.dev",
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "0HcnXsG7gGqLsGNzlHolb5o-_bQXxz9fKyAy5COq-M8",
+        "y": "1eJ6Bs0Y9N407n_MdBO93-EaolRFrJSPWhCkw0wcZZk"
+      }
+    }
+  ],
+  "authentication": [
+    "did:web:codepulse.dev#key-1"
+  ],
+  "assertionMethod": [
+    "did:web:codepulse.dev#key-1"
+  ]
+}
+

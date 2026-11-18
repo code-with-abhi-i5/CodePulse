@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "user_badges" ADD COLUMN IF NOT EXISTS "credentialJwt" TEXT,
+ADD COLUMN IF NOT EXISTS "credentialJwk" JSONB,
+ADD COLUMN IF NOT EXISTS "issuedAt" TIMESTAMP(3);
+
