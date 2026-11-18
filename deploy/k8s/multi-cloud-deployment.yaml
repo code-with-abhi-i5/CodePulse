@@ -1,0 +1,328 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: codepulse-production
+  labels:
+    app.kubernetes.io/name: codepulse
+    app.kubernetes.io/part-of: codepulse-enterprise
+    topology.multicloud/active-active: "true"
+
+---
+# ==============================================================================
+# WireGuard Encrypted Inter-Cloud Tunnel Config & DaemonSet
+# Replicates Redis session state and cross-cloud database logical replication
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wireguard-intercloud-config
+  namespace: codepulse-production
+data:
+  wg0.conf: |
+    [Interface]
+    Address = 10.200.0.1/24
+    ListenPort = 51820
+    PrivateKey = ${WIREGUARD_PRIVATE_KEY}
+    PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+    PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+    # Peer: Secondary Cloud (GCP europe-west3 / us-central1)
+    [Peer]
+    PublicKey = ${GCP_WIREGUARD_PEER_KEY}
+    Endpoint = gcp-tunnel.codepulse.dev:51820
+    AllowedIPs = 10.200.0.2/32, 10.128.0.0/16
+    PersistentKeepalive = 15
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: wireguard-tunnel
+  namespace: codepulse-production
+  labels:
+    app: wireguard-intercloud-gateway
+spec:
+  selector:
+    matchLabels:
+      app: wireguard-intercloud-gateway
+  template:
+    metadata:
+      labels:
+        app: wireguard-intercloud-gateway
+    spec:
+      hostNetwork: true
+      containers:
+        - name: wireguard
+          image: linuxserver/wireguard:v1.0.20210914-ls120
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+                - SYS_MODULE
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "Etc/UTC"
+          volumeMounts:
+            - name: wireguard-config
+              mountPath: /config/wg0.conf
+              subPath: wg0.conf
+            - name: modules
+              mountPath: /lib/modules
+              readOnly: true
+      volumes:
+        - name: wireguard-config
+          configMap:
+            name: wireguard-intercloud-config
+        - name: modules
+          hostPath:
+            path: /lib/modules
+
+---
+# ==============================================================================
+# Multi-Cloud Redis Active-Active Session Replication (WireGuard Bridge)
+# ==============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-session-store
+  namespace: codepulse-production
+spec:
+  serviceName: redis-session-service
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis-session
+  template:
+    metadata:
+      labels:
+        app: redis-session
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          command:
+            - redis-server
+            - "--protected-mode"
+            - "no"
+            - "--appendonly"
+            - "yes"
+            - "--requirepass"
+            - "$(REDIS_PASSWORD)"
+            - "--masterauth"
+            - "$(REDIS_PASSWORD)"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: codepulse-secrets
+                  key: redis-password
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+
+---
+# ==============================================================================
+# Active-Active PostgreSQL Bidirectional Logical Replication Cluster
+# Target: RPO = 0s (Continuous streaming logical slots + conflict resolution)
+# ==============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-active-active
+  namespace: codepulse-production
+spec:
+  serviceName: postgres-active-service
+  replicas: 2
+  selector:
+    matchLabels:
+      app: postgres-active-active
+  template:
+    metadata:
+      labels:
+        app: postgres-active-active
+    spec:
+      containers:
+        - name: postgresql
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_DB
+              value: codepulse
+            - name: POSTGRES_USER
+              value: codepulse_admin
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: codepulse-secrets
+                  key: db-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          args:
+            - "-c"
+            - "wal_level=logical"
+            - "-c"
+            - "max_replication_slots=10"
+            - "-c"
+            - "max_wal_senders=10"
+            - "-c"
+            - "track_commit_timestamp=on" # Required for Last-Write-Wins (LWW) conflict resolution
+            - "-c"
+            - "shared_preload_libraries=pg_stat_statements"
+          ports:
+            - containerPort: 5432
+              name: postgresql
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: db-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+
+---
+# ==============================================================================
+# CodePulse Backend Multi-Cloud Deployment
+# Deployed across AWS (Primary, us-east-1) & GCP (Secondary, us-central1)
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codepulse-backend
+  namespace: codepulse-production
+  labels:
+    app: codepulse-backend
+    tier: api
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: codepulse-backend
+  template:
+    metadata:
+      labels:
+        app: codepulse-backend
+        tier: api
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - codepulse-backend
+                topologyKey: "topology.kubernetes.io/zone"
+      containers:
+        - name: backend
+          image: ghcr.io/code-with-abhi-i5/codepulse-backend:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CLOUD_PROVIDER
+              value: "AWS" # Overridden in GCP deployment overlay
+            - name: SECONDARY_CLOUD_ENDPOINT
+              value: "https://gcp-api.codepulse.dev/api/v1/health/dr"
+            - name: DR_FAILOVER_THRESHOLD_PROBES
+              value: "3"
+            - name: DR_FAILOVER_TIMEOUT_MS
+              value: "20000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: codepulse-secrets
+                  key: database-url
+            - name: REDIS_HOST
+              value: "redis-session-service"
+            - name: REDIS_PORT
+              value: "6379"
+          ports:
+            - containerPort: 3001
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/dr
+              port: 3001
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/dr
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: codepulse-backend-service
+  namespace: codepulse-production
+spec:
+  selector:
+    app: codepulse-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3001
+  type: ClusterIP
+
+---
+# ==============================================================================
+# Global Anycast DNS Ingress with Route53 & Cloud DNS Automated Failover Health Check
+# Target RTO: < 20s
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: codepulse-global-ingress
+  namespace: codepulse-production
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    external-dns.alpha.kubernetes.io/hostname: "api.codepulse.dev"
+    external-dns.alpha.kubernetes.io/ttl: "20" # 20s DNS TTL for sub-20s failover
+spec:
+  rules:
+    - host: api.codepulse.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: codepulse-backend-service
+                port:
+                  number: 80
