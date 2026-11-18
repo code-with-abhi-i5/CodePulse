@@ -221,12 +221,22 @@ export class SyncService {
           }
 
           // 3. Process Rating & XP
-          // Base calculation
-          const xp =
+          // Read existing rating to preserve gamification XP (battles, challenges, etc.)
+          const currentRating = await tx.developerRating.findUnique({
+            where: { userId },
+            select: { gamificationXp: true, overall: true },
+          });
+          const gamificationXp = currentRating?.gamificationXp ?? 0;
+
+          // Base GitHub calculation
+          const githubXp =
             totalCommits * 10 +
             totalPRs * 50 +
             totalIssues * 20 +
             totalStars * 100;
+
+          // Total authoritative XP = GitHub XP + Gamification XP
+          const xp = githubXp + gamificationXp;
           const level = Math.floor(Math.sqrt(xp / 100)) + 1;
           const xpToNextLevel = Math.pow(level, 2) * 100;
 
@@ -243,6 +253,8 @@ export class SyncService {
             update: {
               overall: parseFloat((level * 10 + currentStreak * 2).toFixed(1)),
               level,
+              githubXp,
+              gamificationXp,
               xp,
               xpToNextLevel,
               tier,
@@ -256,6 +268,8 @@ export class SyncService {
               userId,
               overall: parseFloat((level * 10 + currentStreak * 2).toFixed(1)),
               level,
+              githubXp,
+              gamificationXp,
               xp,
               xpToNextLevel,
               tier,

@@ -25,7 +25,7 @@ function setup() {
   };
   const cache = {
     get: jest.fn(async (key: string) => store.get(key)),
-    set: jest.fn(async (key: string, value: unknown) => {
+    set: jest.fn(async (key: string, value: unknown, ttl?: number) => {
       store.set(key, value);
     }),
   };

@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { MultiCloudDrService } from './multi-cloud-dr.service';
 import { HealthController } from './health.controller';
+import { MultiCloudDrService } from './multi-cloud-dr.service';
+import { GameDayRunnerService } from './gameday-runner.service';
 
 @Module({
   controllers: [HealthController],
-  providers: [MultiCloudDrService],
-  exports: [MultiCloudDrService],
+  providers: [MultiCloudDrService, GameDayRunnerService],
+  exports: [MultiCloudDrService, GameDayRunnerService],
 })
 export class HealthModule {}

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Optional,
@@ -7,6 +8,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBattleDto, UpdateBattleStatusDto } from './dto/battles.dto';
 import { SeasonResetService } from './season-reset.service';
+import { XpService } from '../xp/xp.service';
 import {
   placementKFactor,
   remainingPlacementsAfterMatch,
@@ -28,6 +30,7 @@ export class BattlesService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly seasonReset?: SeasonResetService,
+    @Optional() private readonly xpService?: XpService,
   ) {}
 
   /**
@@ -67,7 +70,10 @@ export class BattlesService {
 
   async getActiveBattles() {
     return this.prisma.battle.findMany({
-      where: { status: 'ACTIVE' },
+      where: {
+        status: 'ACTIVE',
+        endsAt: { gt: new Date() },
+      },
       include: {
         challenger: { select: { id: true, username: true, avatar: true } },
         opponent: { select: { id: true, username: true, avatar: true } },
@@ -163,19 +169,67 @@ export class BattlesService {
   }
 
   async createBattle(dto: CreateBattleDto) {
+    if (dto.challengerId === dto.opponentId) {
+      throw new BadRequestException(
+        'Challenger and opponent cannot be the same user',
+      );
+    }
+
+    const endsAt = new Date(dto.endsAt);
+    if (isNaN(endsAt.getTime()) || endsAt <= new Date()) {
+      throw new BadRequestException('Battle endsAt must be a valid future date');
+    }
+
+    const [challenger, opponent] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: dto.challengerId } }),
+      this.prisma.user.findUnique({ where: { id: dto.opponentId } }),
+    ]);
+
+    if (!challenger) {
+      throw new NotFoundException(
+        `Challenger user ${dto.challengerId} not found`,
+      );
+    }
+    if (!opponent) {
+      throw new NotFoundException(`Opponent user ${dto.opponentId} not found`);
+    }
+
+    const existingActive = await this.prisma.battle.findFirst({
+      where: {
+        status: 'ACTIVE',
+        endsAt: { gt: new Date() },
+        OR: [
+          { challengerId: dto.challengerId },
+          { opponentId: dto.challengerId },
+          { challengerId: dto.opponentId },
+          { opponentId: dto.opponentId },
+        ],
+      },
+    });
+
+    if (existingActive) {
+      throw new BadRequestException(
+        'One of the participants already has an active battle in progress',
+      );
+    }
+
     return this.prisma.battle.create({
       data: {
         ...dto,
-        endsAt: new Date(dto.endsAt),
+        endsAt,
+      },
+      include: {
+        challenger: { select: { id: true, username: true, avatar: true } },
+        opponent: { select: { id: true, username: true, avatar: true } },
       },
     });
   }
 
-  async updateBattleStatus(battleId: string, dto: UpdateBattleStatusDto) {
-    const currentSeason =
-      dto.status === 'COMPLETED' && dto.winnerId
-        ? await this.seasonReset?.rolloverIfDue()
-        : undefined;
+  async updateBattleStatus(
+    battleId: string,
+    dto: UpdateBattleStatusDto,
+    callerUserId?: string,
+  ) {
     const battle = await this.prisma.battle.findUnique({
       where: { id: battleId },
       include: {
@@ -188,9 +242,51 @@ export class BattlesService {
       throw new NotFoundException(`Battle ${battleId} not found`);
     }
 
-    if (battle.status === 'COMPLETED' && dto.status === 'COMPLETED') {
-      return battle;
+    if (
+      callerUserId &&
+      battle.challengerId !== callerUserId &&
+      battle.opponentId !== callerUserId
+    ) {
+      throw new ForbiddenException(
+        'Only battle participants can update the battle status',
+      );
     }
+
+    const terminalStatuses = ['COMPLETED', 'FORFEITED', 'EXPIRED', 'CANCELLED'];
+    if (terminalStatuses.includes(battle.status)) {
+      if (battle.status === dto.status) {
+        return battle;
+      }
+      throw new BadRequestException(
+        `Cannot modify battle in terminal status: ${battle.status}`,
+      );
+    }
+
+    if (dto.status === 'FORFEITED') {
+      const forfeitedUserId =
+        dto.forfeitedById || callerUserId || battle.challengerId;
+      return this.forfeitBattle(
+        battleId,
+        forfeitedUserId,
+        dto.cancellationReason,
+      );
+    }
+
+    if (dto.status === 'EXPIRED') {
+      return this.prisma.battle.update({
+        where: { id: battleId },
+        data: {
+          status: 'EXPIRED',
+          cancellationReason:
+            dto.cancellationReason || 'Battle duration exceeded',
+        },
+      });
+    }
+
+    const currentSeason =
+      dto.status === 'COMPLETED' && dto.winnerId
+        ? await this.seasonReset?.rolloverIfDue()
+        : undefined;
 
     if (
       dto.winnerId &&
@@ -323,72 +419,6 @@ export class BattlesService {
           });
         }
 
-        // 1. Update Winner XP
-        let winnerXp = (winnerRatingRec?.xp || 0) + eloOutcome.winnerXpGain;
-        let winnerLevel = winnerRatingRec?.level || 1;
-        let winnerXpToNext = winnerRatingRec?.xpToNextLevel || 1000;
-        let leveledUp = false;
-
-        while (winnerXp >= winnerXpToNext) {
-          winnerLevel += 1;
-          winnerXp -= winnerXpToNext;
-          winnerXpToNext = Math.floor(winnerXpToNext * 1.5);
-          leveledUp = true;
-        }
-
-        await tx.developerRating.upsert({
-          where: { userId: winnerId },
-          create: {
-            userId: winnerId,
-            xp: winnerXp,
-            level: winnerLevel,
-            xpToNextLevel: winnerXpToNext,
-          },
-          update: {
-            xp: winnerXp,
-            level: winnerLevel,
-            xpToNextLevel: winnerXpToNext,
-          },
-        });
-
-        // 2. Update Loser participation XP
-        let loserXp = (loserRatingRec?.xp || 0) + eloOutcome.loserXpGain;
-        let loserLevel = loserRatingRec?.level || 1;
-        let loserXpToNext = loserRatingRec?.xpToNextLevel || 1000;
-
-        while (loserXp >= loserXpToNext) {
-          loserLevel += 1;
-          loserXp -= loserXpToNext;
-          loserXpToNext = Math.floor(loserXpToNext * 1.5);
-        }
-
-        await tx.developerRating.upsert({
-          where: { userId: loserId },
-          create: {
-            userId: loserId,
-            xp: loserXp,
-            level: loserLevel,
-            xpToNextLevel: loserXpToNext,
-          },
-          update: {
-            xp: loserXp,
-            level: loserLevel,
-            xpToNextLevel: loserXpToNext,
-          },
-        });
-
-        // 3. Record Level-Up Activity if winner achieved next tier
-        if (leveledUp) {
-          await tx.activity.create({
-            data: {
-              userId: winnerId,
-              type: 'LEVEL_UP',
-              title: `Reached Developer Level ${winnerLevel}!`,
-              description: `Leveled up after victory in DevBattle match!`,
-            },
-          });
-        }
-
         const winnerName =
           winnerId === battle.challengerId
             ? battle.challenger.username
@@ -397,6 +427,53 @@ export class BattlesService {
           loserId === battle.challengerId
             ? battle.challenger.username
             : battle.opponent.username;
+
+        if (this.xpService) {
+          await this.xpService.addXp(
+            {
+              userId: winnerId,
+              amount: eloOutcome.winnerXpGain,
+              source: 'BATTLE_WIN',
+              reason: `Won DevBattle match against ${loserName}`,
+            },
+            tx,
+          );
+          await this.xpService.addXp(
+            {
+              userId: loserId,
+              amount: eloOutcome.loserXpGain,
+              source: 'BATTLE_PARTICIPATION',
+              reason: `Completed DevBattle match against ${winnerName}`,
+            },
+            tx,
+          );
+        } else {
+          await tx.developerRating.upsert({
+            where: { userId: winnerId },
+            create: {
+              userId: winnerId,
+              gamificationXp: eloOutcome.winnerXpGain,
+              xp: eloOutcome.winnerXpGain,
+            },
+            update: {
+              gamificationXp: { increment: eloOutcome.winnerXpGain },
+              xp: { increment: eloOutcome.winnerXpGain },
+            },
+          });
+          await tx.developerRating.upsert({
+            where: { userId: loserId },
+            create: {
+              userId: loserId,
+              gamificationXp: eloOutcome.loserXpGain,
+              xp: eloOutcome.loserXpGain,
+            },
+            update: {
+              gamificationXp: { increment: eloOutcome.loserXpGain },
+              xp: { increment: eloOutcome.loserXpGain },
+            },
+          });
+        }
+
         await tx.activity.createMany({
           data: [
             {
@@ -435,5 +512,331 @@ export class BattlesService {
         winnerId: dto.winnerId,
       },
     });
+  }
+
+  async forfeitBattle(
+    battleId: string,
+    forfeitedUserId: string,
+    reason = 'Player forfeited',
+  ) {
+    const battle = await this.prisma.battle.findUnique({
+      where: { id: battleId },
+      include: {
+        challenger: true,
+        opponent: true,
+      },
+    });
+
+    if (!battle) {
+      throw new NotFoundException(`Battle ${battleId} not found`);
+    }
+
+    if (
+      battle.challengerId !== forfeitedUserId &&
+      battle.opponentId !== forfeitedUserId
+    ) {
+      throw new ForbiddenException(
+        'Only battle participants can forfeit the battle',
+      );
+    }
+
+    if (battle.status !== 'ACTIVE' && battle.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Cannot forfeit battle in ${battle.status} status`,
+      );
+    }
+
+    // If PENDING challenge is forfeited/declined before match starts
+    if (battle.status === 'PENDING') {
+      return this.prisma.battle.update({
+        where: { id: battleId },
+        data: {
+          status: 'FORFEITED',
+          forfeitedById: forfeitedUserId,
+          cancellationReason: reason,
+        },
+      });
+    }
+
+    // For ACTIVE battles, the non-forfeiting participant wins
+    const winnerId =
+      forfeitedUserId === battle.challengerId
+        ? battle.opponentId
+        : battle.challengerId;
+    const loserId = forfeitedUserId;
+
+    const currentSeason = await this.seasonReset?.rolloverIfDue();
+
+    const [
+      winnerRatingRec,
+      loserRatingRec,
+      winnerBattleRating,
+      loserBattleRating,
+    ] = await Promise.all([
+      this.prisma.developerRating.findUnique({ where: { userId: winnerId } }),
+      this.prisma.developerRating.findUnique({ where: { userId: loserId } }),
+      this.prisma.battleRating.findUnique({ where: { userId: winnerId } }),
+      this.prisma.battleRating.findUnique({ where: { userId: loserId } }),
+    ]);
+
+    const initialWinnerRating = winnerBattleRating?.elo ?? 1200;
+    const initialLoserRating = loserBattleRating?.elo ?? 1200;
+
+    const eloOutcome = this.calculateElo(
+      initialWinnerRating,
+      initialLoserRating,
+      placementKFactor(winnerBattleRating?.placementMatchesRemaining ?? 5),
+      placementKFactor(loserBattleRating?.placementMatchesRemaining ?? 5),
+    );
+
+    return this.prisma.$transaction(async (tx) => {
+      const completedAt = new Date();
+
+      await tx.battleRating.upsert({
+        where: { userId: winnerId },
+        create: {
+          userId: winnerId,
+          elo: eloOutcome.winnerRating,
+          placementMatchesRemaining: 4,
+          seasonNumber: currentSeason?.number ?? 1,
+          lastBattleAt: completedAt,
+          decayFloor: decayFloorForElo(eloOutcome.winnerRating),
+        },
+        update: {
+          elo: eloOutcome.winnerRating,
+          lastBattleAt: completedAt,
+          decayPeriodsApplied: 0,
+          decayFloor: decayFloorForElo(eloOutcome.winnerRating),
+          decayWarnedFor: null,
+          placementMatchesRemaining: remainingPlacementsAfterMatch(
+            winnerBattleRating?.placementMatchesRemaining ?? 5,
+          ),
+        },
+      });
+
+      await tx.battleRating.upsert({
+        where: { userId: loserId },
+        create: {
+          userId: loserId,
+          elo: eloOutcome.loserRating,
+          placementMatchesRemaining: 4,
+          seasonNumber: currentSeason?.number ?? 1,
+          lastBattleAt: completedAt,
+          decayFloor: decayFloorForElo(eloOutcome.loserRating),
+        },
+        update: {
+          elo: eloOutcome.loserRating,
+          lastBattleAt: completedAt,
+          decayPeriodsApplied: 0,
+          decayFloor: decayFloorForElo(eloOutcome.loserRating),
+          decayWarnedFor: null,
+          placementMatchesRemaining: remainingPlacementsAfterMatch(
+            loserBattleRating?.placementMatchesRemaining ?? 5,
+          ),
+        },
+      });
+
+      // Grant placement badges if 5th match completed
+      for (const player of [
+        {
+          userId: winnerId,
+          rating: winnerBattleRating,
+          elo: eloOutcome.winnerRating,
+        },
+        {
+          userId: loserId,
+          rating: loserBattleRating,
+          elo: eloOutcome.loserRating,
+        },
+      ]) {
+        if (player.rating?.placementMatchesRemaining !== 1) continue;
+        const tier = tierForElo(player.elo);
+        const seasonNumber =
+          currentSeason?.number ?? player.rating.seasonNumber;
+        const badgeId = `season-${seasonNumber}-${tier.toLowerCase()}-tier`;
+        await tx.badge.upsert({
+          where: { id: badgeId },
+          create: {
+            id: badgeId,
+            name: `Season ${seasonNumber} ${tier} Tier`,
+            description: `Completed five placement matches in season ${seasonNumber}`,
+            tier:
+              tier === 'MASTER' || tier === 'GRANDMASTER' ? 'DIAMOND' : tier,
+            category: 'seasonal-placement',
+          },
+          update: {},
+        });
+        await tx.userBadge.createMany({
+          data: [{ userId: player.userId, badgeId }],
+          skipDuplicates: true,
+        });
+        await tx.activity.create({
+          data: {
+            userId: player.userId,
+            type: 'ACHIEVEMENT',
+            title: `${tier} placement rank revealed`,
+            description: `Completed five placement matches in season ${seasonNumber}.`,
+          },
+        });
+      }
+
+      // Update Winner XP
+      let winnerXp = (winnerRatingRec?.xp || 0) + eloOutcome.winnerXpGain;
+      let winnerLevel = winnerRatingRec?.level || 1;
+      let winnerXpToNext = winnerRatingRec?.xpToNextLevel || 1000;
+      let leveledUp = false;
+
+      while (winnerXp >= winnerXpToNext) {
+        winnerLevel += 1;
+        winnerXp -= winnerXpToNext;
+        winnerXpToNext = Math.floor(winnerXpToNext * 1.5);
+        leveledUp = true;
+      }
+
+      await tx.developerRating.upsert({
+        where: { userId: winnerId },
+        create: {
+          userId: winnerId,
+          xp: winnerXp,
+          level: winnerLevel,
+          xpToNextLevel: winnerXpToNext,
+        },
+        update: {
+          xp: winnerXp,
+          level: winnerLevel,
+          xpToNextLevel: winnerXpToNext,
+        },
+      });
+
+      if (leveledUp) {
+        await tx.activity.create({
+          data: {
+            userId: winnerId,
+            type: 'LEVEL_UP',
+            title: `Reached Developer Level ${winnerLevel}!`,
+            description: `Leveled up after victory by forfeit in DevBattle!`,
+          },
+        });
+      }
+
+      const winnerName =
+        winnerId === battle.challengerId
+          ? battle.challenger.username
+          : battle.opponent.username;
+      const loserName =
+        loserId === battle.challengerId
+          ? battle.challenger.username
+          : battle.opponent.username;
+
+      await tx.notification.createMany({
+        data: [
+          {
+            userId: winnerId,
+            type: 'BATTLE',
+            title: 'Battle Victory by Forfeit',
+            message: `${loserName} forfeited the battle. You gained ${eloOutcome.winnerDelta} ELO and ${eloOutcome.winnerXpGain} XP.`,
+          },
+          {
+            userId: loserId,
+            type: 'BATTLE',
+            title: 'Battle Forfeited',
+            message: `You forfeited the battle against ${winnerName}. Rating adjusted by ${eloOutcome.loserDelta} ELO.`,
+          },
+        ],
+      });
+
+      await tx.activity.createMany({
+        data: [
+          {
+            userId: winnerId,
+            type: 'BATTLE',
+            title: 'Won a DevBattle (Forfeit)',
+            description: `${loserName} forfeited the battle match.`,
+            metadata: { battleId, outcome: 'forfeit_win' },
+          },
+          {
+            userId: loserId,
+            type: 'BATTLE',
+            title: 'Forfeited a DevBattle',
+            description: `Forfeited match against ${winnerName}.`,
+            metadata: { battleId, outcome: 'forfeit_loss' },
+          },
+        ],
+      });
+
+      return tx.battle.update({
+        where: { id: battleId },
+        data: {
+          status: 'FORFEITED',
+          winnerId,
+          forfeitedById: loserId,
+          cancellationReason: reason,
+        },
+      });
+    });
+  }
+
+  async expireStaleBattles(now: Date = new Date()): Promise<{
+    expiredCount: number;
+    forfeitedCount: number;
+  }> {
+    const pendingExpirationCutoff = new Date(
+      now.getTime() - 24 * 60 * 60 * 1000,
+    );
+    const stalePending = await this.prisma.battle.updateMany({
+      where: {
+        status: 'PENDING',
+        OR: [
+          { endsAt: { lte: now } },
+          { startedAt: { lte: pendingExpirationCutoff } },
+        ],
+      },
+      data: {
+        status: 'EXPIRED',
+        cancellationReason: 'Challenge invitation expired without acceptance',
+      },
+    });
+
+    let expiredCount = stalePending.count;
+    let forfeitedCount = 0;
+
+    const staleActive = await this.prisma.battle.findMany({
+      where: {
+        status: 'ACTIVE',
+        endsAt: { lte: now },
+      },
+    });
+
+    for (const battle of staleActive) {
+      const challengerScore = battle.challengerScore ?? 0;
+      const opponentScore = battle.opponentScore ?? 0;
+
+      if (challengerScore > opponentScore) {
+        await this.forfeitBattle(
+          battle.id,
+          battle.opponentId,
+          'Auto-forfeited due to time expiration while trailing in score',
+        );
+        forfeitedCount++;
+      } else if (opponentScore > challengerScore) {
+        await this.forfeitBattle(
+          battle.id,
+          battle.challengerId,
+          'Auto-forfeited due to time expiration while trailing in score',
+        );
+        forfeitedCount++;
+      } else {
+        await this.prisma.battle.update({
+          where: { id: battle.id },
+          data: {
+            status: 'EXPIRED',
+            cancellationReason: 'Battle expired without decisive winner',
+          },
+        });
+        expiredCount++;
+      }
+    }
+
+    return { expiredCount, forfeitedCount };
   }
 }
