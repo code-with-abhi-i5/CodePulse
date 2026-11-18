@@ -7,10 +7,20 @@ import { BullModule } from '@nestjs/bullmq';
 import { RatingDecayService } from './rating-decay.service';
 import { RatingDecayWorker } from './rating-decay.worker';
 import { RatingDecayScheduler } from './rating-decay.scheduler';
+import { BattlesLifecycleScheduler } from './battles-lifecycle.scheduler';
+import { BattlesLifecycleWorker } from './battles-lifecycle.worker';
 import { MetricsModule } from '../metrics/metrics.module';
+import { XpModule } from '../xp/xp.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: 'rating-decay' }), MetricsModule],
+  imports: [
+    BullModule.registerQueue(
+      { name: 'rating-decay' },
+      { name: 'battles-lifecycle' },
+    ),
+    MetricsModule,
+    XpModule,
+  ],
   controllers: [BattlesController],
   providers: [
     BattlesService,
@@ -19,6 +29,8 @@ import { MetricsModule } from '../metrics/metrics.module';
     RatingDecayService,
     RatingDecayWorker,
     RatingDecayScheduler,
+    BattlesLifecycleScheduler,
+    BattlesLifecycleWorker,
   ],
   exports: [BattlesService, BattlesGateway],
 })

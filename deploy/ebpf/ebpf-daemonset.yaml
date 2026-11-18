@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ebpf-socket-tracer
+  namespace: kube-system
+  labels:
+    app: ebpf-socket-tracer
+    tier: observability
+spec:
+  selector:
+    matchLabels:
+      app: ebpf-socket-tracer
+  template:
+    metadata:
+      labels:
+        app: ebpf-socket-tracer
+    spec:
+      hostNetwork: true
+      hostPID: true
+      containers:
+        - name: tracer
+          image: ghcr.io/code-with-abhi-i5/ebpf-tracer:latest
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - BPF
+                - SYS_ADMIN
+                - NET_ADMIN
+                - SYS_RESOURCE
+          env:
+            - name: TARGET_PORTS
+              value: "5432,6379,3001"
+            - name: PROMETHEUS_EXPORTER_PORT
+              value: "9400"
+          ports:
+            - containerPort: 9400
+              name: metrics
+          volumeMounts:
+            - name: sys-kernel-debug
+              mountPath: /sys/kernel/debug
+              readOnly: false
+            - name: sys-fs-bpf
+              mountPath: /sys/fs/bpf
+              readOnly: false
+            - name: modules
+              mountPath: /lib/modules
+              readOnly: true
+      volumes:
+        - name: sys-kernel-debug
+          hostPath:
+            path: /sys/kernel/debug
+        - name: sys-fs-bpf
+          hostPath:
+            path: /sys/fs/bpf
+        - name: modules
+          hostPath:
+            path: /lib/modules
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ebpf-socket-tracer-metrics
+  namespace: kube-system
+  labels:
+    app: ebpf-socket-tracer
+spec:
+  selector:
+    app: ebpf-socket-tracer
+  ports:
+    - name: metrics
+      port: 9400
+      targetPort: 9400
