@@ -38,7 +38,7 @@ export const DynamicConfigSchema = z.object({
 });
 
 export type DynamicConfigValues = z.infer<typeof DynamicConfigSchema>;
-export type DynamicConfigKey = keyof DynamicConfigValues;
+export type DynamicConfigKey = Extract<keyof DynamicConfigValues, string>;
 
 @Injectable()
 export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {

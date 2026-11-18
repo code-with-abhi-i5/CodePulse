@@ -1,11 +1,35 @@
-import { Controller, Get, Post, Delete, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Delete, Param, Query } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { FriendsService } from './friends.service';
+import type { GraphRecommendationResult } from '../graph/developer-graph.service';
 
 @ApiTags('friends')
-@Controller('friends')
+@Controller(['friends', 'api/v1/friends'])
 export class FriendsController {
   constructor(private readonly friendsService: FriendsService) {}
+
+  @Get('recommendations/graph')
+  @ApiOperation({
+    summary:
+      'Get 2nd and 3rd degree peer suggestions based on developer social and skill graph',
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'userId', required: false, type: String })
+  async getGraphRecommendations(
+    @Query('userId') userId?: string,
+    @Query('limit') limit?: number,
+  ): Promise<GraphRecommendationResult[]> {
+    const currentUserId = userId || '123';
+    return this.friendsService.getGraphRecommendations(
+      currentUserId,
+      limit ? Number(limit) : 10,
+    );
+  }
 
   @Get('feed')
   @ApiOperation({ summary: 'Get social activity feed of followed developers' })
@@ -13,13 +37,13 @@ export class FriendsController {
   @ApiQuery({ name: 'offset', required: false, type: Number })
   async getActivityFeed(
     @Query('limit') limit?: number,
-    @Query('offset') offset?: number
+    @Query('offset') offset?: number,
   ) {
     const mockUserId = '123';
     return this.friendsService.getActivityFeed(
       mockUserId,
       limit ? Number(limit) : 20,
-      offset ? Number(offset) : 0
+      offset ? Number(offset) : 0,
     );
   }
 
