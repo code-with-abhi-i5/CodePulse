@@ -3,8 +3,10 @@ import {
   Logger,
   OnModuleInit,
   OnModuleDestroy,
+  Optional,
 } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { ReplicaBalancerService } from './replica-balancer.service';
 
 const DEFAULT_SLOW_QUERY_THRESHOLD_MS = 200;
 
@@ -22,7 +24,10 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor() {
+  constructor(
+    @Optional()
+    public readonly replicaBalancer?: ReplicaBalancerService,
+  ) {
     super({ log: [{ emit: 'event', level: 'query' }] });
 
     const thresholdMs = slowQueryThresholdMs(
@@ -60,5 +65,20 @@ export class PrismaService
 
   async onModuleDestroy() {
     await this.$disconnect();
+  }
+
+  /**
+   * Executes a read query routed through the intelligent read-replica load balancer
+   * with query cost weighting and automatic replication lag failover.
+   */
+  async executeRead<T>(
+    operationName: string,
+    args: Record<string, unknown> | undefined,
+    action: (client: PrismaClient) => Promise<T>,
+  ): Promise<T> {
+    if (this.replicaBalancer) {
+      return this.replicaBalancer.executeRead(operationName, args, action);
+    }
+    return action(this);
   }
 }
