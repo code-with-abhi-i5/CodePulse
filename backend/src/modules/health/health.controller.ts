@@ -33,6 +33,23 @@ import type {
   MultiCloudDrReport,
   CloudProvider,
 } from './multi-cloud-dr.service';
+import {
+  GeoDnsService,
+  GeoDnsStatusReport,
+  RouteOptimizationDecision,
+} from './geo-dns.service';
+
+export class DivertTrafficDto {
+  fromRegion!: string;
+  toRegion!: string;
+  reason?: string;
+}
+
+export class SimulateProbeDto {
+  hubId!: string;
+  latencyMs!: number;
+  consecutiveFailures?: number;
+}
 
 export class StartGameDayDrillDto {
   @ApiPropertyOptional({
@@ -87,12 +104,13 @@ export class StartGameDayDrillDto {
   mockRpoSeconds?: number;
 }
 
-@ApiTags('admin', 'health', 'gameday')
+@ApiTags('admin', 'health', 'gameday', 'geo-dns')
 @Controller('health')
 export class HealthController {
   constructor(
     @Optional() private readonly gamedayService?: GameDayRunnerService,
     @Optional() private readonly multiCloudDrService?: MultiCloudDrService,
+    @Optional() private readonly geoDnsService?: GeoDnsService,
   ) {}
 
   @Get()
@@ -102,6 +120,57 @@ export class HealthController {
       status: 'ok',
       timestamp: new Date().toISOString(),
     };
+  }
+
+  // --- Geo-DNS BGP Routing Endpoints ---
+
+  @Get('geo-dns')
+  @ApiOperation({ summary: 'Get current Geo-DNS latency and routing status' })
+  getGeoDnsStatus(): GeoDnsStatusReport {
+    if (!this.geoDnsService) {
+      throw new BadRequestException('GeoDnsService is not available');
+    }
+    return this.geoDnsService.getGeoDnsStatus();
+  }
+
+  @Post('geo-dns/divert')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Manually divert traffic between regions' })
+  async divertTraffic(
+    @Body() dto: DivertTrafficDto,
+  ): Promise<RouteOptimizationDecision> {
+    if (!this.geoDnsService) {
+      throw new BadRequestException('GeoDnsService is not available');
+    }
+    if (!dto.fromRegion || !dto.toRegion) {
+      throw new BadRequestException('fromRegion and toRegion are required');
+    }
+    return this.geoDnsService.divertTraffic(
+      dto.fromRegion,
+      dto.toRegion,
+      dto.reason || 'Manual disaster recovery drill or operator override',
+    );
+  }
+
+  @Post('geo-dns/simulate-probe')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Simulate BGP latency probe update for testing' })
+  simulateProbe(@Body() dto: SimulateProbeDto): {
+    success: boolean;
+    hubId: string;
+  } {
+    if (!this.geoDnsService) {
+      throw new BadRequestException('GeoDnsService is not available');
+    }
+    if (!dto.hubId || typeof dto.latencyMs !== 'number') {
+      throw new BadRequestException('hubId and numeric latencyMs are required');
+    }
+    this.geoDnsService.simulateProbeLatency(
+      dto.hubId,
+      dto.latencyMs,
+      dto.consecutiveFailures ?? 0,
+    );
+    return { success: true, hubId: dto.hubId };
   }
 
   // --- Multi-Cloud Disaster Recovery Endpoints ---
