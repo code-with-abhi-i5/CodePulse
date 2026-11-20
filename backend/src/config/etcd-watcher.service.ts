@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Optional,
   OnModuleInit,
   OnModuleDestroy,
   Logger,
@@ -45,11 +46,12 @@ export class EtcdWatcherService
   private isRunning = false;
   private reconnectTimer: NodeJS.Timeout | null = null;
 
-  constructor(options: EtcdWatcherServiceOptions = {}) {
+  constructor(@Optional() options?: EtcdWatcherServiceOptions) {
     super();
+    const opts = options ?? {};
     this.fallbackCachePath =
-      options.fallbackCachePath ?? DEFAULT_FALLBACK_CACHE_PATH;
-    this.enableFallbackCache = options.enableFallbackCache ?? true;
+      opts.fallbackCachePath ?? DEFAULT_FALLBACK_CACHE_PATH;
+    this.enableFallbackCache = opts.enableFallbackCache ?? true;
 
     // 1. Initialize base configuration from schema defaults
     this.inMemoryConfig = DynamicConfigSchema.parse({});
@@ -61,9 +63,9 @@ export class EtcdWatcherService
 
     // 3. Instantiate etcd distributed stream watcher
     this.watcher = new EtcdWatcher({
-      prefix: options.prefix ?? '/codepulse/config/',
-      hosts: options.hosts,
-      mockClient: options.mockClient,
+      prefix: opts.prefix ?? '/codepulse/config/',
+      hosts: opts.hosts,
+      mockClient: opts.mockClient,
     });
   }
 
