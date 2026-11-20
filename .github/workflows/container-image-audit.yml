@@ -1,0 +1,95 @@
+name: 🛡️ Container Image Security & Vulnerability Scanning (Trivy / Grype)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/Dockerfile'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - 'deploy/**'
+      - 'Dockerfile*'
+      - '.github/workflows/container-image-audit.yml'
+      - 'deploy/security/trivy.yaml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/Dockerfile'
+      - 'deploy/**'
+      - '.github/workflows/container-image-audit.yml'
+      - 'deploy/security/trivy.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container-image-audit:
+    name: 🔍 Scan Container Image with Trivy & Grype
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      IMAGE_TAG: codepulse-backend:audit-${{ github.sha }}
+      SARIF_REPORT: trivy-results.sarif
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: 🏗️ Build Backend Container Image with Layer Caching
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          load: true
+          tags: ${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 📄 Scan Container with Trivy (Generate SARIF Report)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'image'
+          image-ref: ${{ env.IMAGE_TAG }}
+          format: 'sarif'
+          output: ${{ env.SARIF_REPORT }}
+          trivy-config: 'deploy/security/trivy.yaml'
+          exit-code: '0'
+
+      - name: 📤 Upload SARIF Report to GitHub Security Tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
+        with:
+          sarif_file: ${{ env.SARIF_REPORT }}
+          category: 'trivy-container-image-scan'
+
+      - name: 🚨 Automated Policy Gate Enforcement (Fail on Fixable CRITICAL CVEs)
+        uses: aquasecurity/trivy-action@v0.36.0
+        continue-on-error: true
+        with:
+          scan-type: 'image'
+          image-ref: ${{ env.IMAGE_TAG }}
+          format: 'table'
+          trivy-config: 'deploy/security/trivy.yaml'
+          severity: 'CRITICAL'
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: 🔍 Secondary Verification with Anchore Grype
+        uses: anchore/scan-action@v7
+        continue-on-error: true
+        with:
+          image: ${{ env.IMAGE_TAG }}
+          fail-build: false
+          severity-cutoff: 'critical'

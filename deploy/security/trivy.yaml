@@ -1,0 +1,36 @@
+# CodePulse Container Image Security Policy for Trivy & Grype
+# Version: 1.0.0
+# Reference: deploy/security/trivy.yaml
+
+# Severity thresholds to inspect and report
+severity:
+  - CRITICAL
+  - HIGH
+
+# Vulnerability types to detect
+vuln-type:
+  - os
+  - library
+
+# Fail build on CRITICAL vulnerabilities that have vendor fixes
+exit-code: 1
+ignore-unfixed: true
+
+# Image scanning configuration
+scan:
+  scanners:
+    - vuln
+    - secret
+    - misconfig
+
+# Cache settings for fast sub-60s CI runs
+cache:
+  backend: fs
+
+# Automated policy enforcement & waivers
+# Justifiable waivers for documented development or low-exploitability false positives
+vulnerability:
+  ignore:
+    # Example justified waivers:
+    # - id: CVE-2023-XXXXX
+    #   statement: "Mitigated by non-root execution and read-only container filesystem."

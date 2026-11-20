@@ -6,6 +6,8 @@ on:
 
 permissions:
   pull-requests: write
+  issues: write
+  contents: read
 
 jobs:
   welcome:
@@ -13,13 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Welcome Contributor
-        uses: actions/first-interaction@v1
+        uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          pr-message: |
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: "👋 Thank you for opening an issue in CodePulse!"
+          pr_message: |
             🎉 Thank you for submitting your first Pull Request to **CodePulse** for **Nexus Spring of Code 2026**!
             
             - 🤖 Our automated CI checks are currently testing your code.
             - 📋 Please ensure your PR description links your assigned issue with `Closes #<issue-number>`.
             - 🏷️ Once CI passes, a maintainer will review your code and assign your NSoC Level tag.
-

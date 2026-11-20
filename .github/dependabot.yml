@@ -1,51 +1,48 @@
 version: 2
 updates:
-  # Maintain dependencies for the Next.js Frontend
+  # Maintain dependencies for the Next.js Frontend (Paused)
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-    open-pull-requests-limit: 10
+      interval: "monthly"
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
       - "frontend"
     commit-message:
       prefix: "chore(deps)"
-    groups:
-      production-dependencies:
-        patterns:
-          - "*"
-        exclude-patterns:
-          - "@types/*"
-          - "eslint*"
-          - "prettier*"
-      dev-dependencies:
-        dependency-type: "development"
 
-  # Maintain dependencies for the NestJS Backend
+  # Maintain dependencies for the NestJS Backend (Paused)
   - package-ecosystem: "npm"
     directory: "/backend"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-    open-pull-requests-limit: 10
+      interval: "monthly"
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
       - "backend"
     commit-message:
       prefix: "chore(backend-deps)"
+    ignore:
+      - dependency-name: "@prisma/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@nestjs/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "bullmq"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "archiver"
+        update-types: ["version-update:semver-major"]
 
-  # Maintain GitHub Actions dependencies
+  # Maintain GitHub Actions dependencies (Paused)
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
       - "ci/cd"

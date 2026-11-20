@@ -13,14 +13,17 @@ import { BattleHistoryList, type HistoricalBattle } from "@/components/battles/b
 import { BattleQueueDialog } from "@/components/battles/battle-queue-dialog";
 import { useCurrentUser } from "@/hooks/api/use-auth";
 import { Button } from "@/components/ui/button";
+import { BotSelector } from "@/components/battles/bot-selector";
+import { BOT_ARCHETYPES, BotArchetype, botToDevData } from "@/lib/bot-archetypes";
 
 type BattlePhase = "SETUP" | "INTRO" | "ROUNDS" | "REPORT";
 
 export default function BattlesPage() {
   const { data: currentUser } = useCurrentUser();
   const [phase, setPhase] = useState<BattlePhase>("SETUP");
-  const [ghostBattleData, setGhostBattleData] = useState<{ p1: any; p2: any; battleType: string } | null>(null);
+  const [ghostBattleData, setGhostBattleData] = useState<{ p1: any; p2: any; battleType: string; selectedBot?: BotArchetype } | null>(null);
   const [setupUsernames, setSetupUsernames] = useState<{ p1: string; p2: string; battleType: string } | null>(null);
+  const [selectedBot, setSelectedBot] = useState<BotArchetype | null>(null);
   const [initialP1, setInitialP1] = useState("");
   const [initialP2, setInitialP2] = useState("");
   const [isIntroFinished, setIsIntroFinished] = useState(false);
@@ -42,7 +45,7 @@ export default function BattlesPage() {
     }
   }, []);
 
-  const saveBattleToHistory = (p1: any, p2: any, battleType: string) => {
+  const saveBattleToHistory = (p1: any, p2: any, battleType: string, selectedBot?: BotArchetype) => {
     try {
       const calc = (s: any) =>
         (s?.totalCommits || 0) * 1 +
@@ -54,7 +57,12 @@ export default function BattlesPage() {
       const p1Score = p1?.score || calc(p1?.stats) || 85;
       const p2Score = p2?.score || calc(p2?.stats) || 70;
       const winner = p1Score > p2Score ? "p1" : p1Score < p2Score ? "p2" : "draw";
-      const xpChange = Math.abs(Math.round((p1Score - p2Score) * 0.15)) + 15;
+      let xpChange = Math.abs(Math.round((p1Score - p2Score) * 0.15)) + 15;
+
+      // Winning against a harder AI bot awards scaled XP
+      if (battleType === "AI Battle" && selectedBot) {
+        xpChange = Math.round(xpChange * selectedBot.xpMultiplier);
+      }
 
       const newRecord: HistoricalBattle = {
         id: `battle-${Date.now()}`,
@@ -117,25 +125,37 @@ export default function BattlesPage() {
     });
   }, []);
 
-  const startGhostBattle = useCallback(async (p1: string, p2: string, battleType: string) => {
+  const startGhostBattle = useCallback(async (p1: string, p2: string, battleType: string, selectedBot?: BotArchetype) => {
     setSetupUsernames({ p1, p2, battleType });
     setIsIntroFinished(false);
     setPhase("INTRO");
 
     try {
-      const [res1, res2] = await Promise.all([
-        fetch(`/api/github/developer?username=${p1}`),
-        fetch(`/api/github/developer?username=${p2}`),
-      ]);
+      let p1Data: any;
+      let p2Data: any;
 
-      if (!res1.ok || !res2.ok) {
-        throw new Error("Could not find one or both GitHub users.");
+      if (battleType === "AI Battle" && selectedBot) {
+        const res1 = await fetch(`/api/github/developer?username=${p1}`);
+        if (!res1.ok) {
+          throw new Error("Could not find the GitHub user.");
+        }
+        p1Data = await res1.json();
+        p2Data = botToDevData(selectedBot);
+      } else {
+        const [res1, res2] = await Promise.all([
+          fetch(`/api/github/developer?username=${p1}`),
+          fetch(`/api/github/developer?username=${p2}`),
+        ]);
+
+        if (!res1.ok || !res2.ok) {
+          throw new Error("Could not find one or both GitHub users.");
+        }
+
+        p1Data = await res1.json();
+        p2Data = await res2.json();
       }
 
-      const data1 = await res1.json();
-      const data2 = await res2.json();
-
-      setGhostBattleData({ p1: data1, p2: data2, battleType });
+      setGhostBattleData({ p1: p1Data, p2: p2Data, battleType, selectedBot: battleType === "AI Battle" ? selectedBot : undefined });
     } catch (err: any) {
       toast.error(err.message || "Failed to initiate battle.");
       setPhase("SETUP");
@@ -248,6 +268,8 @@ export default function BattlesPage() {
               focusFirstInput={focusSetupOnReturn}
             />
 
+            <BotSelector onSelect={setSelectedBot} />
+
             <BattleHistoryList
               battles={battleHistory}
               onReplay={(battle) => {
@@ -270,6 +292,8 @@ export default function BattlesPage() {
             key="intro"
             p1Username={setupUsernames.p1}
             p2Username={setupUsernames.p2}
+            selectedBot={selectedBot}
+            isBotBattle={setupUsernames.battleType === "AI Battle"}
             onIntroComplete={handleIntroComplete}
           />
         )}
@@ -302,8 +326,10 @@ export default function BattlesPage() {
               player2={ghostBattleData.p2}
               battleType={ghostBattleData.battleType}
               isMuted={isMuted}
+              selectedBot={ghostBattleData.selectedBot}
+              isBotBattle={ghostBattleData.battleType === "AI Battle"}
               onComplete={() => {
-                saveBattleToHistory(ghostBattleData.p1, ghostBattleData.p2, ghostBattleData.battleType);
+                saveBattleToHistory(ghostBattleData.p1, ghostBattleData.p2, ghostBattleData.battleType, ghostBattleData.selectedBot);
                 setPhase("REPORT");
               }}
             />
@@ -322,6 +348,7 @@ export default function BattlesPage() {
               player2={ghostBattleData.p2}
               battleType={ghostBattleData.battleType}
               isMuted={isMuted}
+              selectedBot={ghostBattleData.selectedBot}
               onToggleMute={toggleMute}
               onRematch={() => {
                 setGhostBattleData(null);

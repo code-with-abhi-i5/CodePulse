@@ -42,6 +42,7 @@ interface BattleReportProps {
   onRematch: () => void;
   isMuted?: boolean;
   onToggleMute?: () => void;
+  selectedBot?: { name: string; difficulty: string; color: string; xpMultiplier: number } | null;
 }
 
 export function BattleReport({
@@ -51,6 +52,7 @@ export function BattleReport({
   onRematch,
   isMuted: initialIsMuted = false,
   onToggleMute,
+  selectedBot = null,
 }: BattleReportProps) {
   const [internalMuted, setInternalMuted] = useState(initialIsMuted);
   const [copied, setCopied] = useState(false);
@@ -300,6 +302,27 @@ export function BattleReport({
       </div>
 
       {/* 5. Summary Cards */}
+      {selectedBot && battleType === "AI Battle" && (
+        <div className="bg-card/50 backdrop-blur-xl border border-border rounded-3xl p-6 flex items-center gap-4 shadow-2xl">
+          <div className="w-14 h-14 rounded-2xl bg-background flex items-center justify-center shadow-lg border border-border">
+            <img src={player2.avatar} alt={selectedBot.name} className="w-full h-full object-cover rounded-2xl" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-xs font-bold uppercase tracking-wider ${selectedBot.color}`}>
+                {selectedBot.difficulty.charAt(0).toUpperCase() + selectedBot.difficulty.slice(1)} Bot
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-muted text-xs font-bold">
+                ×{selectedBot.xpMultiplier} XP
+              </span>
+            </div>
+            <h3 className="text-lg font-bold text-foreground">AI Opponent Defeated</h3>
+            <p className="text-sm text-muted-foreground">
+              You outsmarted {selectedBot.name}. Victory against a tougher opponent awards scaled XP.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <SummaryCard icon={Trophy} label="Winner" value={winner.name} color="text-amber-400" />
         <SummaryCard icon={TrendingUp} label="Biggest Advantage" value={biggestAdvantage} color="text-[var(--status-success)]" />

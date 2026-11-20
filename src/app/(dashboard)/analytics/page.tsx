@@ -15,6 +15,7 @@ import { StaggerContainer, StaggerItem } from "@/components/animations/page-tran
 import { AnimatedCounter } from "@/components/animations/animated-counter";
 import { AnalyticsExportModal } from "@/components/analytics/analytics-export-modal";
 import { ProductivityGauge } from "@/components/analytics/productivity-gauge";
+import { CustomQueryConsole } from "@/components/analytics/custom-query-console";
 import { calculateProductivity, type ProductivityBattle } from "@/lib/productivity-calculator";
 import { apiClient, extractData } from "@/lib/api-client";
 import { useCurrentUser } from "@/hooks/api/use-auth";
@@ -249,6 +250,11 @@ export default function AnalyticsPage() {
         {/* PR & Review Velocity Breakdown (Span 12) */}
         <StaggerItem className="md:col-span-12">
           <PrReviewVelocityCard stats={stats} />
+        </StaggerItem>
+
+        {/* In-Browser DuckDB Analytical Query Console (Span 12) */}
+        <StaggerItem className="md:col-span-12">
+          <CustomQueryConsole />
         </StaggerItem>
 
         {/* Commit Activity (Span 12) */}

@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AnimatedCounter } from "@/components/animations/animated-counter";
-import { CheckCircle2, User, BookOpen, Activity, Code, Award } from "lucide-react";
+import { CheckCircle2, User, BookOpen, Activity, Code, Award, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { audioManager } from "@/lib/audio-manager";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BotArchetype } from "@/lib/bot-archetypes";
 
 interface DevData {
   username: string;
@@ -33,6 +34,8 @@ interface BattleRoundsProps {
   battleType: string;
   onComplete: () => void;
   isMuted?: boolean;
+  selectedBot?: BotArchetype | null;
+  isBotBattle?: boolean;
 }
 
 const ALL_ROUNDS = [
@@ -43,7 +46,7 @@ const ALL_ROUNDS = [
   { id: "quality", title: "Repository Quality", icon: Award },
 ];
 
-export function BattleRounds({ player1, player2, battleType, onComplete, isMuted = false }: BattleRoundsProps) {
+export function BattleRounds({ player1, player2, battleType, onComplete, isMuted = false, selectedBot = null, isBotBattle = false }: BattleRoundsProps) {
   const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
 
   // Filter rounds based on battleType
@@ -124,6 +127,8 @@ export function BattleRounds({ player1, player2, battleType, onComplete, isMuted
               p1={player1} 
               p2={player2} 
               isMuted={isMuted}
+              selectedBot={selectedBot}
+              isBotBattle={isBotBattle}
             />
           ) : (
             <motion.div
@@ -145,37 +150,39 @@ export function BattleRounds({ player1, player2, battleType, onComplete, isMuted
   );
 }
 
-function RoundDisplay({ round, p1, p2, isMuted }: { round: any, p1: DevData, p2: DevData, isMuted: boolean }) {
+function RoundDisplay({ round, p1, p2, isMuted, selectedBot = null, isBotBattle = false }: { round: any, p1: DevData, p2: DevData, isMuted: boolean, selectedBot?: BotArchetype | null, isBotBattle?: boolean }) {
   // Deterministic mocking for missing fields based on actual stats
+  const botAccuracy = isBotBattle && selectedBot ? selectedBot.accuracy : 1;
+
   const getMetrics = () => {
     switch (round.id) {
       case "profile":
         return [
-          { label: "Followers", v1: p1.stats.followers, v2: p2.stats.followers },
-          { label: "Public Repos", v1: p1.stats.repos, v2: p2.stats.repos },
+          { label: "Followers", v1: p1.stats.followers, v2: p2.stats.followers * botAccuracy },
+          { label: "Public Repos", v1: p1.stats.repos, v2: p2.stats.repos * botAccuracy },
           { label: "Account Age (yr)", v1: 2026 - parseInt(p1.joinedAt.slice(-4)), v2: 2026 - parseInt(p2.joinedAt.slice(-4)) },
         ];
       case "repository":
         return [
-          { label: "Total Stars", v1: p1.stats.totalStars, v2: p2.stats.totalStars },
+          { label: "Total Stars", v1: p1.stats.totalStars, v2: p2.stats.totalStars * botAccuracy },
         ];
       case "activity":
         return [
-          { label: "Total Commits", v1: p1.stats.totalCommits, v2: p2.stats.totalCommits },
-          { label: "Current Streak", v1: p1.stats.streak, v2: p2.stats.streak },
-          { label: "Pull Requests", v1: p1.stats.totalPRs, v2: p2.stats.totalPRs },
-          { label: "Issues", v1: p1.stats.totalIssues, v2: p2.stats.totalIssues },
+          { label: "Total Commits", v1: p1.stats.totalCommits, v2: p2.stats.totalCommits * botAccuracy },
+          { label: "Current Streak", v1: p1.stats.streak, v2: p2.stats.streak * botAccuracy },
+          { label: "Pull Requests", v1: p1.stats.totalPRs, v2: p2.stats.totalPRs * botAccuracy },
+          { label: "Issues", v1: p1.stats.totalIssues, v2: p2.stats.totalIssues * botAccuracy },
         ];
       case "language":
         return [
-          { label: "Unique Languages", v1: p1.topLanguages.length, v2: p2.topLanguages.length },
-          { label: "Top Language Repos", v1: p1.topLanguages[0]?.count || 0, v2: p2.topLanguages[0]?.count || 0 },
-          { label: "Frameworks Used", v1: Object.keys(p1.frameworks || {}).length, v2: Object.keys(p2.frameworks || {}).length },
+          { label: "Unique Languages", v1: p1.topLanguages.length, v2: p2.topLanguages.length * botAccuracy },
+          { label: "Top Language Repos", v1: p1.topLanguages[0]?.count || 0, v2: (p2.topLanguages[0]?.count || 0) * botAccuracy },
+          { label: "Frameworks Used", v1: Object.keys(p1.frameworks || {}).length, v2: Object.keys(p2.frameworks || {}).length * botAccuracy },
         ];
       case "quality":
         return [
-          { label: "Stars Per Repo", v1: p1.stats.repos ? parseFloat((p1.stats.totalStars / p1.stats.repos).toFixed(1)) : 0, v2: p2.stats.repos ? parseFloat((p2.stats.totalStars / p2.stats.repos).toFixed(1)) : 0 },
-          { label: "Commits Per PR", v1: p1.stats.totalPRs ? parseFloat((p1.stats.totalCommits / p1.stats.totalPRs).toFixed(1)) : 0, v2: p2.stats.totalPRs ? parseFloat((p2.stats.totalCommits / p2.stats.totalPRs).toFixed(1)) : 0 },
+          { label: "Stars Per Repo", v1: p1.stats.repos ? parseFloat((p1.stats.totalStars / p1.stats.repos).toFixed(1)) : 0, v2: p2.stats.repos ? parseFloat((p2.stats.totalStars / p2.stats.repos).toFixed(1)) * botAccuracy : 0 },
+          { label: "Commits Per PR", v1: p1.stats.totalPRs ? parseFloat((p1.stats.totalCommits / p1.stats.totalPRs).toFixed(1)) : 0, v2: p2.stats.totalPRs ? parseFloat((p2.stats.totalCommits / p2.stats.totalPRs).toFixed(1)) * botAccuracy : 0 },
         ];
       default:
         return [];
@@ -222,11 +229,28 @@ function RoundDisplay({ round, p1, p2, isMuted }: { round: any, p1: DevData, p2:
         </div>
         <div className="text-xl font-black text-muted-foreground pb-4">VS</div>
         <div>
-          <Avatar className="mx-auto mb-2 size-12 border-2 border-border" aria-hidden="true">
-            {p2.avatar && <AvatarImage src={p2.avatar} alt="" />}
-            <AvatarFallback>{p2.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="font-semibold">{p2.name}</div>
+          <div className="flex flex-col items-center gap-2">
+            {isBotBattle && selectedBot ? (
+              <>
+                <div className="w-12 h-12 rounded-2xl bg-muted border border-border flex items-center justify-center mb-1 overflow-hidden relative shadow-lg">
+                  <img src={selectedBot.avatar} alt={selectedBot.name} className="w-full h-full object-cover relative z-10" />
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center border-2 border-background shadow text-[10px]">
+                    <Crown className="w-2.5 h-2.5 fill-current" />
+                  </div>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-bold uppercase tracking-wider">{selectedBot.difficulty}</span>
+                  <span className="text-[10px] italic text-muted-foreground">&quot;{selectedBot.banter[0]}&quot;</span>
+                </div>
+              </>
+            ) : (
+              <Avatar className="mx-auto mb-2 size-12 border-2 border-border" aria-hidden="true">
+                {p2.avatar && <AvatarImage src={p2.avatar} alt="" />}
+                <AvatarFallback>{p2.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+            )}
+            <div className="font-semibold">{p2.name}</div>
+          </div>
         </div>
       </div>
 
