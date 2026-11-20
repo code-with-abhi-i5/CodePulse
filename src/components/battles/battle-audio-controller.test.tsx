@@ -6,28 +6,30 @@ import { BattleAudioController } from './battle-audio-controller';
 // Mock SpatialAudioEngine
 vi.mock('../audio/spatial-audio-engine', () => {
   return {
-    SpatialAudioEngine: vi.fn().mockImplementation(() => ({
-      ensureContext: vi.fn().mockResolvedValue({}),
-      updateMixSettings: vi.fn((s) => ({
-        masterVolume: s.masterVolume ?? 0.8,
-        sfxVolume: s.sfxVolume ?? 0.9,
-        commentaryVolume: s.commentaryVolume ?? 1.0,
-        spatialEnabled: s.spatialEnabled ?? true,
-        duckingEnabled: s.duckingEnabled ?? true,
-      })),
-      updateAdrenalineWpm: vi.fn(),
-      playKeystrokeClick: vi.fn(),
-      playCompileErrorBuzzer: vi.fn(),
-      playTestSuccessChime: vi.fn(),
-      playCountdownBeep: vi.fn(),
-      getMixSettings: vi.fn(() => ({
-        masterVolume: 0.8,
-        sfxVolume: 0.9,
-        commentaryVolume: 1.0,
-        spatialEnabled: true,
-        duckingEnabled: true,
-      })),
-    })),
+    SpatialAudioEngine: vi.fn().mockImplementation(function () {
+      return {
+        ensureContext: vi.fn().mockResolvedValue({}),
+        updateMixSettings: vi.fn((s) => ({
+          masterVolume: s.masterVolume ?? 0.8,
+          sfxVolume: s.sfxVolume ?? 0.9,
+          commentaryVolume: s.commentaryVolume ?? 1.0,
+          spatialEnabled: s.spatialEnabled ?? true,
+          duckingEnabled: s.duckingEnabled ?? true,
+        })),
+        updateAdrenalineWpm: vi.fn(),
+        playKeystrokeClick: vi.fn(),
+        playCompileErrorBuzzer: vi.fn(),
+        playTestSuccessChime: vi.fn(),
+        playCountdownBeep: vi.fn(),
+        getMixSettings: vi.fn(() => ({
+          masterVolume: 0.8,
+          sfxVolume: 0.9,
+          commentaryVolume: 1.0,
+          spatialEnabled: true,
+          duckingEnabled: true,
+        })),
+      };
+    }),
   };
 });
 
