@@ -89,3 +89,4 @@ describe('SabotageStoreModal (#538 Battle Sabotage Armory)', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
