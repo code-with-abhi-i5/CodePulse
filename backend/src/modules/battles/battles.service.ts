@@ -16,6 +16,7 @@ import {
 } from './season-rating';
 import { decayFloorForElo } from './rating-decay';
 import { AntiSmurfService } from './anti-smurf.service';
+import { TranspilerService } from '../ai/transpiler.service';
 import type { MatchResultTelemetryDto } from './dto/match-result.dto';
 
 export interface EloOutcome {
@@ -34,6 +35,7 @@ export class BattlesService {
     @Optional() private readonly seasonReset?: SeasonResetService,
     @Optional() private readonly xpService?: XpService,
     @Optional() private readonly antiSmurfService?: AntiSmurfService,
+    @Optional() private readonly transpilerService?: TranspilerService,
   ) {}
 
   /**
@@ -850,5 +852,32 @@ export class BattlesService {
   ) {
     if (!this.antiSmurfService) return null;
     return this.antiSmurfService.evaluateAndRecordPlacement(telemetry, currentElo);
+  }
+
+  /**
+   * Retrieves or transpiles polyglot battle challenge templates across TypeScript, Python, Go, and Rust.
+   */
+  async getPolyglotChallengeTemplate(
+    challengeId: string,
+    targetLanguage: 'typescript' | 'python' | 'go' | 'rust',
+    sourceCode?: string,
+  ) {
+    if (this.transpilerService && sourceCode) {
+      return this.transpilerService.transpile({
+        challengeId,
+        sourceCode,
+        sourceLanguage: 'typescript',
+        targetLanguage,
+      });
+    }
+
+    return this.prisma.challengeTemplate.findUnique({
+      where: {
+        challengeId_language: {
+          challengeId,
+          language: targetLanguage,
+        },
+      },
+    });
   }
 }

@@ -285,6 +285,25 @@ model Challenge {
   @@map("challenges")
 }
 
+model ChallengeTemplate {
+  id              String   @id @default(uuid())
+  challengeId     String?
+  language        String
+  sourceLanguage  String
+  functionName    String
+  starterCode     String   @db.Text
+  solutionCode    String   @db.Text
+  testHarness     String?  @db.Text
+  verified        Boolean  @default(false)
+  astMetadata     Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([challengeId, language])
+  @@index([language])
+  @@map("challenge_templates")
+}
+
 model UserChallenge {
   id          String          @id @default(uuid())
   userId      String
