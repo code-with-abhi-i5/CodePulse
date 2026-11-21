@@ -279,3 +279,4 @@ export class PreKeyService {
     this.messages.length = 0;
   }
 }
+

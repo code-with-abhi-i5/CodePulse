@@ -102,3 +102,4 @@ export class SafetyNumberQueryDto {
   @ApiProperty({ description: 'User B Public Identity Key' })
   identityKeyB!: string;
 }
+
