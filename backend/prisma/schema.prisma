@@ -570,25 +570,50 @@ enum StorageTier {
 }
 
 model CommitArchive {
-  id               String      @id @default(uuid())
-  repositoryId     String
-  commitSha        String
-  tier             StorageTier @default(HOT)
-  originalBytes    Int
-  compressedBytes  Int
-  compressionRatio Float       @default(1.0)
-  storageLocation  String      // Local file path, S3 URL, or Glacier Archive ID
-  accessCount      Int         @default(0)
-  lastAccessedAt   DateTime    @default(now())
-  archivedAt       DateTime    @default(now())
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  id                  String      @id @default(uuid())
+  repositoryId        String
+  commitSha           String
+  assetType           String      @default("COMMIT") // "COMMIT" | "MATCH_REPLAY"
+  tier                StorageTier @default(HOT)
+  originalBytes       Int
+  compressedBytes     Int
+  compressionRatio    Float       @default(1.0)
+  storageLocation     String      // Local file path, S3 URL, or Glacier Archive ID
+  checksumSha256      String?     // SHA-256 for cryptographic integrity verification
+  checksumMd5         String?     // MD5 for S3 ETag verification
+  restorationStatus   String?     // IDLE | RESTORING | RESTORED
+  restorationProgress Float?      // 0.0 - 100.0%
+  restoredAt          DateTime?
+  accessCount         Int         @default(0)
+  lastAccessedAt      DateTime    @default(now())
+  archivedAt          DateTime    @default(now())
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
 
   @@unique([repositoryId, commitSha])
   @@index([repositoryId])
   @@index([tier])
   @@index([lastAccessedAt])
   @@map("commit_archives")
+}
+
+model StorageTierMetrics {
+  id                      String   @id @default(uuid())
+  recordedAt              DateTime @default(now())
+  totalAssets             Int
+  hotTierCount            Int
+  warmTierCount           Int
+  coldTierCount           Int
+  totalOriginalBytes      BigInt   @default(0)
+  totalCompressedBytes    BigInt   @default(0)
+  totalBytesSaved         BigInt   @default(0)
+  estimatedMonthlyCostUsd Float    @default(0.0)
+  estimatedSavingsUsd     Float    @default(0.0)
+  savingsPercentage       Float    @default(0.0)
+  metadata                Json?
+
+  @@index([recordedAt])
+  @@map("storage_tier_metrics")
 }
 
 

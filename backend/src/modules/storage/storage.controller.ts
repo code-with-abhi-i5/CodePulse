@@ -10,7 +10,7 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { MmapStorageService } from './mmap-storage.service';
 import type { MmapEngineStats } from './mmap-storage.service';
@@ -21,7 +21,12 @@ import type { RocksDbStats } from './rocksdb.service';
 import { WorkspaceStateService } from './workspace-state.service';
 import type { UnsavedDraftState } from './workspace-state.service';
 import { HsmService } from './hsm.service';
-import type { StorageTierAuditReport } from './hsm.service';
+import type {
+  StorageTierAuditReport,
+  RestorationProgress,
+  RetrievedCommitArchive,
+  RetrievedReplayArchive,
+} from './hsm.service';
 
 @ApiTags('storage')
 @Controller('storage')
@@ -97,8 +102,53 @@ export class StorageController {
   async getCommitDiff(
     @Param('repositoryId') repositoryId: string,
     @Param('commitSha') commitSha: string,
-  ) {
+  ): Promise<RetrievedCommitArchive> {
     return this.hsmService.getCommitDiff(repositoryId, commitSha);
+  }
+
+  @Get('replay/:battleId')
+  @ApiOperation({
+    summary:
+      'Transparently retrieve match replay recording across Hot NVMe, Warm S3, or Cold Glacier',
+  })
+  @ApiParam({ name: 'battleId', description: 'Battle UUID' })
+  async getMatchReplay(
+    @Param('battleId') battleId: string,
+  ): Promise<RetrievedReplayArchive> {
+    return this.hsmService.getMatchReplay(battleId);
+  }
+
+  @Post('hsm/lifecycle')
+  @ApiOperation({
+    summary:
+      'Trigger HSM lifecycle policy tiering migration (>30d to Warm S3, >90d to Cold Glacier)',
+  })
+  async triggerLifecycleMigration() {
+    return this.hsmService.runLifecycleTieringMigration();
+  }
+
+  @Post('hsm/restore/:assetId')
+  @ApiOperation({
+    summary: 'Initiate on-demand AWS S3 Glacier restoration for an archived cold asset',
+  })
+  @ApiParam({ name: 'assetId', description: 'Asset Archive ID or Commit SHA' })
+  @ApiQuery({ name: 'tier', required: false, enum: ['Expedited', 'Standard', 'Bulk'] })
+  async initiateRestore(
+    @Param('assetId') assetId: string,
+    @Query('tier') tier?: 'Expedited' | 'Standard' | 'Bulk',
+  ): Promise<RestorationProgress> {
+    return this.hsmService.initiateGlacierRestore(assetId, tier || 'Standard');
+  }
+
+  @Get('hsm/restore/status/:assetId')
+  @ApiOperation({
+    summary: 'Check ongoing Glacier asset restoration progress and estimated availability',
+  })
+  @ApiParam({ name: 'assetId', description: 'Asset Archive ID or Commit SHA' })
+  async getRestoreStatus(
+    @Param('assetId') assetId: string,
+  ): Promise<RestorationProgress> {
+    return this.hsmService.getRestorationStatus(assetId);
   }
 
   @Get('mmap/benchmark')
