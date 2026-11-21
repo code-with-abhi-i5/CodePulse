@@ -12,6 +12,7 @@ import { PasskeyService } from './passkey.service';
 import { PasskeyController } from './passkey.controller';
 import { SamlSsoService } from './saml-sso.service';
 import { Fido2AttestationService } from './fido2-attestation.service';
+import { TwoFactorService } from './two-factor.service';
 
 @Module({
   imports: [
@@ -45,9 +46,11 @@ import { Fido2AttestationService } from './fido2-attestation.service';
     PasskeyService,
     SamlSsoService,
     Fido2AttestationService,
+    TwoFactorService,
   ],
   exports: [
     AuthService,
+    TwoFactorService,
     JwtModule,
     TokenBlacklistService,
     AttestationValidatorService,

@@ -74,8 +74,8 @@ export class GithubWebhookService {
             xpTransactions: {
               create: {
                 amount: xpGained,
-                type: 'CODE_COMMIT',
-                reason: `GitHub Webhook: Pushed ${commitCount} commits to ${payload.repository?.name || 'repository'}`,
+                source: 'CODE_COMMIT',
+                description: `GitHub Webhook: Pushed ${commitCount} commits to ${payload.repository?.name || 'repository'}`,
               },
             },
           },
@@ -113,16 +113,17 @@ export class GithubWebhookService {
             xpTransactions: {
               create: {
                 amount: xpGained,
-                type: 'PULL_REQUEST_MERGED',
-                reason: `GitHub Webhook: PR #${payload.pull_request?.number} merged in ${payload.repository?.name || 'repo'}`,
+                source: 'PULL_REQUEST_MERGED',
+                description: `GitHub Webhook: PR #${payload.pull_request?.number} merged in ${payload.repository?.name || 'repo'}`,
               },
             },
             activities: {
               create: {
-                type: 'PULL_REQUEST_MERGED',
+                type: 'PULL_REQUEST',
                 title: `PR #${payload.pull_request?.number} Merged`,
                 description: payload.pull_request?.title || 'Pull request merged',
-                points: xpGained,
+                repository: payload.repository?.name,
+                metadata: { points: xpGained },
               },
             },
           },
@@ -160,8 +161,8 @@ export class GithubWebhookService {
             xpTransactions: {
               create: {
                 amount: xpGained,
-                type: 'STAR_RECEIVED',
-                reason: `GitHub Webhook: New star received on ${payload.repository?.name || 'repo'}`,
+                source: 'STAR_RECEIVED',
+                description: `GitHub Webhook: New star received on ${payload.repository?.name || 'repo'}`,
               },
             },
           },

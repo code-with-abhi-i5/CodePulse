@@ -18,6 +18,9 @@ model User {
   samlSubjectId       String?           @unique
   organizationRole    String?           @default("MEMBER")
   passwordHash        String?
+  twoFactorSecret      String?
+  twoFactorEnabled     Boolean           @default(false)
+  twoFactorBackupCodes String[]          @default([])
   interests           String[]           @default([])
   avatar              String?
   bio                 String?

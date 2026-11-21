@@ -22,8 +22,10 @@ export class GitHubLoginDto {
 }
 
 export class AuthResponseDto {
-  @ApiProperty({ description: 'Short-lived JWT Access Token' })
-  accessToken: string;
+  @ApiProperty({ required: false, description: 'Short-lived JWT Access Token' })
+  @IsOptional()
+  @IsString()
+  accessToken?: string;
 
   @ApiProperty({ required: false, description: 'Rotating refresh token string' })
   @IsOptional()
@@ -34,13 +36,95 @@ export class AuthResponseDto {
   @IsOptional()
   expiresIn?: number;
 
-  @ApiProperty()
-  user: {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  user?: {
     id: string;
     username: string;
     name: string | null;
     email: string | null;
   };
+
+  @ApiProperty({
+    required: false,
+    description: 'Flag indicating multi-factor TOTP verification is required before full access token issuance',
+  })
+  @IsOptional()
+  is2faRequired?: boolean;
+
+  @ApiProperty({
+    required: false,
+    description: 'Temporary 5-minute scoped JWT token to authorize 2FA code verification',
+  })
+  @IsOptional()
+  @IsString()
+  twoFactorToken?: string;
+}
+
+export class TwoFactorGenerateDto {
+  @ApiProperty({ required: false, description: 'User ID requesting 2FA secret generation' })
+  @IsOptional()
+  @IsString()
+  userId?: string;
+}
+
+export class TwoFactorEnableDto {
+  @ApiProperty({ required: false, description: 'User ID activating 2FA' })
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
+  @ApiProperty({ description: '6-digit TOTP passcode from Authenticator app', example: '123456' })
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\d{6}$/, { message: 'Verification code must be exactly 6 digits' })
+  code: string;
+}
+
+export class TwoFactorVerifyDto {
+  @ApiProperty({
+    required: false,
+    description: 'Temporary 2FA pending JWT token returned from initial login',
+  })
+  @IsOptional()
+  @IsString()
+  twoFactorToken?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'User email if verifying directly with credentials',
+  })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({
+    description: '6-digit TOTP code or 8-character single-use emergency recovery code',
+    example: '123456',
+  })
+  @IsString()
+  @IsNotEmpty()
+  code: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Device or browser client fingerprint string for session tracking',
+  })
+  @IsOptional()
+  @IsString()
+  deviceFingerprint?: string;
+}
+
+export class TwoFactorDisableDto {
+  @ApiProperty({ required: false, description: 'User ID disabling 2FA' })
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
+  @ApiProperty({ description: '6-digit TOTP passcode or backup recovery code' })
+  @IsString()
+  @IsNotEmpty()
+  code: string;
 }
 
 export class RefreshTokenDto {

@@ -29,6 +29,10 @@ import {
   RefreshTokenDto,
   RegisterDto,
   ResetPasswordDto,
+  TwoFactorGenerateDto,
+  TwoFactorEnableDto,
+  TwoFactorVerifyDto,
+  TwoFactorDisableDto,
 } from './dto/auth.dto';
 
 @ApiTags('auth')
@@ -203,5 +207,62 @@ export class AuthController {
   async previewOpaDecision(@Body() input: any) {
     const engine = new OpaEngineService();
     return engine.evaluate(input);
+  }
+
+  @Post('2fa/generate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Generate RFC 6238 TOTP 32-character base32 secret and QR code data URL',
+  })
+  async generateTwoFactor(
+    @Body() body: TwoFactorGenerateDto,
+    @Req() req: Request,
+  ) {
+    const userId =
+      body.userId ||
+      (req as any).user?.id ||
+      (req as any).user?.sub;
+    return this.authService.generateTwoFactorSecret(userId);
+  }
+
+  @Post('2fa/enable')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify 6-digit TOTP code and activate 2FA with 10 single-use emergency backup recovery codes',
+  })
+  async enableTwoFactor(
+    @Body() body: TwoFactorEnableDto,
+    @Req() req: Request,
+  ) {
+    const userId =
+      body.userId ||
+      (req as any).user?.id ||
+      (req as any).user?.sub;
+    return this.authService.enableTwoFactor(userId, body.code);
+  }
+
+  @Post('2fa/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify 2FA during login using 6-digit TOTP or emergency recovery code to issue full access token',
+  })
+  async verifyTwoFactor(@Body() body: TwoFactorVerifyDto) {
+    return this.authService.verifyTwoFactorLogin(body);
+  }
+
+  @Post('2fa/disable')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Disable two-factor authentication on user account',
+  })
+  async disableTwoFactor(
+    @Body() body: TwoFactorDisableDto,
+    @Req() req: Request,
+  ) {
+    const userId =
+      body.userId ||
+      (req as any).user?.id ||
+      (req as any).user?.sub;
+    return this.authService.disableTwoFactor(userId, body.code);
   }
 }
