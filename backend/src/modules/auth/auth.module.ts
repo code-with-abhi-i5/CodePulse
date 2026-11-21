@@ -12,6 +12,8 @@ import { PasskeyService } from './passkey.service';
 import { PasskeyController } from './passkey.controller';
 import { SamlSsoService } from './saml-sso.service';
 import { Fido2AttestationService } from './fido2-attestation.service';
+import { CryptoModule } from '../crypto/crypto.module';
+import { PostQuantumJwtService } from './jwt.service';
 
 @Module({
   imports: [
@@ -35,6 +37,7 @@ import { Fido2AttestationService } from './fido2-attestation.service';
       },
     }),
     SyncModule,
+    CryptoModule,
   ],
   controllers: [AuthController, PasskeyController],
   providers: [
@@ -45,6 +48,7 @@ import { Fido2AttestationService } from './fido2-attestation.service';
     PasskeyService,
     SamlSsoService,
     Fido2AttestationService,
+    PostQuantumJwtService,
   ],
   exports: [
     AuthService,
@@ -53,6 +57,7 @@ import { Fido2AttestationService } from './fido2-attestation.service';
     AttestationValidatorService,
     PasskeyService,
     SamlSsoService,
+    PostQuantumJwtService,
   ],
 })
 export class AuthModule {}

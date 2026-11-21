@@ -169,3 +169,4 @@ export class PqcBenchmarkReportDto {
   @ApiProperty({ description: 'Timestamp of benchmark execution' })
   timestamp!: string;
 }
+
