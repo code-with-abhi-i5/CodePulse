@@ -17,6 +17,8 @@ import { GithubIcon } from "@/components/icons/github";
 import { Hero3D } from "@/components/sections/hero-3d";
 import { FAQSection } from "@/components/sections/faq-section";
 import { BackToTop } from "@/components/ui/back-to-top";
+import { CountUp } from "@/components/sections/count-up";
+import { useInView } from "react-intersection-observer";
 
 const features = [
   {
@@ -58,14 +60,18 @@ const features = [
 ];
 
 const stats = [
-  { value: "250K+", label: "Active Developers" },
-  { value: "12M+", label: "Commits Analyzed" },
-  { value: "500K+", label: "Battles Fought" },
-  { value: "99.9%", label: "Uptime" },
+  { value: 250, suffix: "K+", label: "Active Developers" },
+  { value: 12, suffix: "M+", label: "Commits Analyzed" },
+  { value: 500, suffix: "K+", label: "Battles Fought" },
+  { value: 99.9, suffix: "%", decimalPlaces: 1, label: "Uptime" },
 ];
 
 export default function LandingPage() {
   const shouldReduceMotion = useReducedMotion();
+  const { ref: statsRef, inView: statsInView } = useInView({
+    threshold: 0.25,
+    triggerOnce: true,
+  });
 
   return (
     <div className="min-h-screen text-slate-200 bg-[#020617] relative" style={{
@@ -170,7 +176,7 @@ export default function LandingPage() {
         <Hero3D />
 
         {/* Stats Section */}
-        <section id="stats" aria-label="Platform Statistics" className="py-24 px-6 relative">
+        <section id="stats" aria-label="Platform Statistics" className="py-24 px-6 relative" ref={statsRef}>
           <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
             {stats.map((stat, i) => (
               <motion.div
@@ -196,7 +202,13 @@ export default function LandingPage() {
               >
                 <div className="absolute inset-0 bg-sky-500/5 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
                 <div className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-500 mb-2 relative z-10">
-                  {stat.value}
+                  <CountUp
+                    target={stat.value}
+                    suffix={stat.suffix}
+                    decimalPlaces={"decimalPlaces" in stat ? stat.decimalPlaces : 0}
+                    isVisible={statsInView}
+                    reducedMotion={shouldReduceMotion === true}
+                  />
                 </div>
                 <div className="text-sm text-slate-400 relative z-10">{stat.label}</div>
               </motion.div>
