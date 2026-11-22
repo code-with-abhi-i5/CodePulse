@@ -17,6 +17,7 @@ describe('AuthService', () => {
     user: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
     refreshToken: {
       create: jest.fn(),
@@ -37,6 +38,7 @@ describe('AuthService', () => {
 
   const jwtMock = {
     sign: jest.fn().mockReturnValue('signed-jwt'),
+    verify: jest.fn().mockReturnValue({ sub: 'user-id', email: 'dev@example.com', is2faPending: true }),
   };
 
   const syncMock = {
@@ -305,5 +307,137 @@ describe('AuthService', () => {
       expect.objectContaining({ sub: 'vault-user-id' }),
       { secret: 'vault-active-key-777' },
     );
+  });
+
+  describe('Two-Factor Authentication (TOTP / 2FA Engine #309)', () => {
+    const salt = randomBytes(16).toString('hex');
+    const key = scryptSync('Password123!', salt, 64);
+    const validPasswordHash = `${salt}:${key.toString('hex')}`;
+
+    it('returns temporary 2fa_pending token with 5-min expiry when twoFactorEnabled is true', async () => {
+      const user = {
+        id: '2fa-user-id',
+        authEmail: '2fa@example.com',
+        username: 'securedev',
+        name: 'Secure Dev',
+        email: '2fa@example.com',
+        passwordHash: validPasswordHash,
+        twoFactorEnabled: true,
+        twoFactorSecret: 'enc-secret',
+        twoFactorBackupCodes: [],
+      };
+      prismaMock.user.findUnique.mockResolvedValue(user);
+
+      const response = await service.authenticateWithPassword(
+        '2fa@example.com',
+        'Password123!',
+      );
+
+      expect(response.is2faRequired).toBe(true);
+      expect(response.twoFactorToken).toBeDefined();
+      expect(response.expiresIn).toBe(300);
+      expect(response.accessToken).toBeUndefined(); // Must NOT issue full access token yet
+    });
+
+    it('generates base32 secret, QR data URL, and encrypts secret at rest in DB', async () => {
+      const user = {
+        id: 'user-setup-2fa',
+        authEmail: 'setup@example.com',
+        username: 'setupdev',
+        email: 'setup@example.com',
+      };
+      prismaMock.user.findUnique.mockResolvedValue(user);
+      prismaMock.user.update.mockResolvedValue(user);
+
+      const res = await service.generateTwoFactorSecret('user-setup-2fa');
+
+      expect(res.secret).toHaveLength(32);
+      expect(res.otpauthUrl).toContain('otpauth://totp/CodePulse:setup%40example.com');
+      expect(res.qrCodeDataUrl).toMatch(/^data:image\//);
+
+      // Verify encrypted storage in Prisma
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-setup-2fa' },
+          data: expect.objectContaining({
+            twoFactorSecret: expect.stringMatching(/^[a-f0-9]+:[a-f0-9]+:[a-f0-9]+$/),
+          }),
+        }),
+      );
+    });
+
+    it('enables 2FA and returns 10 emergency backup recovery codes on valid 6-digit TOTP verification', async () => {
+      // Use internal two-factor service to compute valid code
+      const tfa = (service as any).tfaService;
+      const plainSecret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+      const encryptedSecret = tfa.encryptSecret(plainSecret);
+      const validCode = tfa.computeTotp(plainSecret);
+
+      const user = {
+        id: 'user-enable-2fa',
+        twoFactorSecret: encryptedSecret,
+        twoFactorEnabled: false,
+      };
+      prismaMock.user.findUnique.mockResolvedValue(user);
+      prismaMock.user.update.mockResolvedValue({ ...user, twoFactorEnabled: true });
+
+      const res = await service.enableTwoFactor('user-enable-2fa', validCode);
+
+      expect(res.enabled).toBe(true);
+      expect(res.backupCodes).toHaveLength(10);
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-enable-2fa' },
+          data: expect.objectContaining({
+            twoFactorEnabled: true,
+            twoFactorBackupCodes: expect.any(Array),
+          }),
+        }),
+      );
+    });
+
+    it('allows login verification using single-use emergency backup recovery code and decrements codes in DB', async () => {
+      const tfa = (service as any).tfaService;
+      const plainSecret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+      const encryptedSecret = tfa.encryptSecret(plainSecret);
+      const { codes, hashedCodes } = tfa.generateRecoveryCodes(10);
+      const backupCodeToUse = codes[0];
+
+      const user = {
+        id: 'user-backup-redemption',
+        authEmail: 'recovery@example.com',
+        username: 'recoverydev',
+        name: 'Recovery Dev',
+        email: 'recovery@example.com',
+        twoFactorEnabled: true,
+        twoFactorSecret: encryptedSecret,
+        twoFactorBackupCodes: hashedCodes,
+      };
+
+      prismaMock.user.findUnique.mockResolvedValue(user);
+      prismaMock.user.update.mockResolvedValue(user);
+      prismaMock.refreshToken.create.mockResolvedValue({ id: 'rt-1' });
+
+      jwtMock.verify.mockReturnValue({
+        sub: 'user-backup-redemption',
+        is2faPending: true,
+      });
+
+      const response = await service.verifyTwoFactorLogin({
+        twoFactorToken: 'valid-2fa-pending-jwt',
+        code: backupCodeToUse,
+      });
+
+      expect(response.accessToken).toBe('signed-jwt');
+      // Verify the redeemed code was deleted from user's backup codes list
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-backup-redemption' },
+          data: expect.objectContaining({
+            twoFactorBackupCodes: expect.arrayContaining([]),
+          }),
+        }),
+      );
+    });
   });
 });

@@ -18,12 +18,15 @@ import { CryptoModule } from '../crypto/crypto.module';
 import { WatermarkService } from './watermark.service';
 
 import { HypeMeterService } from './hype-meter.service';
+import { HypeStormGateway } from './hype-storm.gateway';
+import { RedisService } from '../../common/redis/redis.service';
 import { TournamentEngineService } from './tournament-engine.service';
 import { EsportsModule } from '../esports/esports.module';
 import { AiModule } from '../ai/ai.module';
 import { RaidBossService } from './raid-boss.service';
 import { AntiSmurfService } from './anti-smurf.service';
 import { AntiCheatBiometricsService } from './anti-cheat-biometrics.service';
+import { SabotageEngineService } from './sabotage-engine.service';
 
 
 @Module({
@@ -53,10 +56,13 @@ import { AntiCheatBiometricsService } from './anti-cheat-biometrics.service';
     ReplayStreamService,
     WatermarkService,
     HypeMeterService,
+    HypeStormGateway,
+    RedisService,
     TournamentEngineService,
     RaidBossService,
     AntiSmurfService,
     AntiCheatBiometricsService,
+    SabotageEngineService,
   ],
   exports: [
     BattlesService,
@@ -64,7 +70,10 @@ import { AntiCheatBiometricsService } from './anti-cheat-biometrics.service';
     ReplayStreamService,
     WatermarkService,
     HypeMeterService,
+    HypeStormGateway,
+    RedisService,
     TournamentEngineService,
+    SabotageEngineService,
     RaidBossService,
     AntiSmurfService,
     AntiCheatBiometricsService,

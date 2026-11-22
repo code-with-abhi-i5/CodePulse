@@ -14,6 +14,7 @@ import { JwtService } from '@nestjs/jwt';
 import { SyncService } from '../sync/sync.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { VaultService } from '../security/vault.service';
+import { TwoFactorService } from './two-factor.service';
 import axios from 'axios';
 import { Prisma } from '@prisma/client';
 import {
@@ -57,7 +58,12 @@ export class AuthService {
     private readonly syncService: SyncService,
     private readonly blacklistService: TokenBlacklistService,
     @Optional() private readonly vaultService?: VaultService,
-  ) {}
+    @Optional() private readonly twoFactorService?: TwoFactorService,
+  ) {
+    this.tfaService = this.twoFactorService || new TwoFactorService();
+  }
+
+  private readonly tfaService: TwoFactorService;
 
   async register(
     data: RegisterDto,
@@ -116,6 +122,32 @@ export class AuthService {
       !(await this.verifyPassword(password, user.passwordHash))
     ) {
       throw new UnauthorizedException('Invalid email or password.');
+    }
+
+    // Two-Factor Authentication Check:
+    // If 2FA is activated on the user account, issue a temporary 5-minute 2fa_pending token
+    // instead of the full access & refresh tokens.
+    if (user.twoFactorEnabled) {
+      const twoFactorToken = this.jwtService.sign(
+        {
+          sub: user.id,
+          email: user.authEmail,
+          is2faPending: true,
+        },
+        { expiresIn: '5m' },
+      );
+
+      return {
+        is2faRequired: true,
+        twoFactorToken,
+        expiresIn: 300,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          email: user.email,
+        },
+      };
     }
 
     return await this.createAuthResponse(user, deviceFingerprint);
@@ -549,5 +581,213 @@ export class AuthService {
       );
       throw new UnauthorizedException('Failed to authenticate with GitHub');
     }
+  }
+
+  /**
+   * Generates a new RFC 6238 TOTP base32 secret and QR code data URL for a user,
+   * encrypts the secret at rest with AES-256-GCM, and updates the user record.
+   */
+  async generateTwoFactorSecret(userId: string): Promise<{
+    secret: string;
+    otpauthUrl: string;
+    qrCodeDataUrl: string;
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new BadRequestException('User not found.');
+    }
+
+    const accountIdentifier = user.authEmail || user.email || user.username;
+    const { secret, otpauthUrl, qrCodeDataUrl } =
+      await this.tfaService.generateSecret(accountIdentifier, 'CodePulse');
+
+    const encryptedSecret = this.tfaService.encryptSecret(secret);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorSecret: encryptedSecret,
+      },
+    });
+
+    return {
+      secret,
+      otpauthUrl,
+      qrCodeDataUrl,
+    };
+  }
+
+  /**
+   * Verifies the 6-digit TOTP code and activates 2FA for the account.
+   * Generates 10 single-use emergency backup recovery codes and returns them to the user.
+   */
+  async enableTwoFactor(
+    userId: string,
+    code: string,
+  ): Promise<{
+    enabled: boolean;
+    backupCodes: string[];
+    message: string;
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user || !user.twoFactorSecret) {
+      throw new BadRequestException('2FA secret has not been generated for this account.');
+    }
+
+    const plainSecret = this.tfaService.decryptSecret(user.twoFactorSecret);
+    const isValid = this.tfaService.verifyTotp(plainSecret, code);
+
+    if (!isValid) {
+      throw new BadRequestException('Invalid 6-digit TOTP verification code.');
+    }
+
+    // Generate 10 cryptographically random emergency recovery backup codes
+    const { codes, hashedCodes } = this.tfaService.generateRecoveryCodes(10);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorEnabled: true,
+        twoFactorBackupCodes: hashedCodes,
+      },
+    });
+
+    return {
+      enabled: true,
+      backupCodes: codes,
+      message: 'Two-factor authentication has been successfully activated.',
+    };
+  }
+
+  /**
+   * Verifies 2FA during login using either 6-digit TOTP or an 8-character emergency backup code.
+   * On success, redeems backup code if used and issues full JWT access & refresh tokens.
+   */
+  async verifyTwoFactorLogin(data: {
+    twoFactorToken?: string;
+    email?: string;
+    code: string;
+    deviceFingerprint?: string;
+  }): Promise<AuthResponseDto> {
+    let userId: string | null = null;
+
+    if (data.twoFactorToken) {
+      try {
+        const payload: any = this.jwtService.verify(data.twoFactorToken);
+        if (!payload || !payload.sub || !payload.is2faPending) {
+          throw new UnauthorizedException('Invalid or expired 2FA verification token.');
+        }
+        userId = payload.sub;
+      } catch {
+        throw new UnauthorizedException('Invalid or expired 2FA verification token.');
+      }
+    } else if (data.email) {
+      const user = await this.prisma.user.findUnique({
+        where: { authEmail: data.email.trim().toLowerCase() },
+      });
+      if (user) {
+        userId = user.id;
+      }
+    }
+
+    if (!userId) {
+      throw new BadRequestException('Either a valid twoFactorToken or user email must be provided.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      throw new UnauthorizedException('Two-factor authentication is not enabled for this account.');
+    }
+
+    const cleanCode = data.code ? data.code.trim() : '';
+    let isVerified = false;
+
+    // 1. Try 6-digit TOTP code
+    if (/^\d{6}$/.test(cleanCode)) {
+      const plainSecret = this.tfaService.decryptSecret(user.twoFactorSecret);
+      isVerified = this.tfaService.verifyTotp(plainSecret, cleanCode);
+    }
+
+    // 2. If not verified via TOTP, check if it is a single-use emergency recovery backup code
+    if (!isVerified && user.twoFactorBackupCodes && user.twoFactorBackupCodes.length > 0) {
+      const redemption = this.tfaService.verifyAndRedeemRecoveryCode(
+        cleanCode,
+        user.twoFactorBackupCodes,
+      );
+
+      if (redemption.valid) {
+        isVerified = true;
+        // Atomically update user to remove the redeemed backup code
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            twoFactorBackupCodes: redemption.remainingHashedCodes,
+          },
+        });
+        this.logger.log(`Emergency backup code successfully redeemed for user ${user.id}`);
+      }
+    }
+
+    if (!isVerified) {
+      throw new UnauthorizedException('Invalid two-factor authentication code or backup recovery code.');
+    }
+
+    return await this.createAuthResponse(user, data.deviceFingerprint);
+  }
+
+  /**
+   * Disables 2FA on the user's account after verifying valid TOTP or recovery code.
+   */
+  async disableTwoFactor(
+    userId: string,
+    code: string,
+  ): Promise<{ disabled: boolean; message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.twoFactorEnabled) {
+      return { disabled: true, message: '2FA is already disabled.' };
+    }
+
+    const cleanCode = code ? code.trim() : '';
+    let isVerified = false;
+
+    if (user.twoFactorSecret && /^\d{6}$/.test(cleanCode)) {
+      const plainSecret = this.tfaService.decryptSecret(user.twoFactorSecret);
+      isVerified = this.tfaService.verifyTotp(plainSecret, cleanCode);
+    }
+
+    if (!isVerified && user.twoFactorBackupCodes) {
+      const redemption = this.tfaService.verifyAndRedeemRecoveryCode(
+        cleanCode,
+        user.twoFactorBackupCodes,
+      );
+      if (redemption.valid) {
+        isVerified = true;
+      }
+    }
+
+    if (!isVerified) {
+      throw new BadRequestException('Invalid two-factor code or recovery code.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        twoFactorBackupCodes: [],
+      },
+    });
+
+    return { disabled: true, message: 'Two-factor authentication has been disabled.' };
   }
 }
