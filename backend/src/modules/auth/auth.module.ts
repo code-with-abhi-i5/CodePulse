@@ -14,6 +14,14 @@ import { SamlSsoService } from './saml-sso.service';
 import { Fido2AttestationService } from './fido2-attestation.service';
 import { TwoFactorService } from './two-factor.service';
 
+import { CryptoModule } from '../crypto/crypto.module';
+import { PostQuantumJwtService } from './jwt.service';
+
+import { KeysController } from './keys.controller';
+import { PreKeyService } from './prekey.service';
+
+
+
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -36,8 +44,9 @@ import { TwoFactorService } from './two-factor.service';
       },
     }),
     SyncModule,
+    CryptoModule,
   ],
-  controllers: [AuthController, PasskeyController],
+  controllers: [AuthController, PasskeyController, KeysController],
   providers: [
     AuthService,
     JwtStrategy,
@@ -47,6 +56,12 @@ import { TwoFactorService } from './two-factor.service';
     SamlSsoService,
     Fido2AttestationService,
     TwoFactorService,
+
+    PostQuantumJwtService,
+
+    PreKeyService,
+
+
   ],
   exports: [
     AuthService,
@@ -56,6 +71,10 @@ import { TwoFactorService } from './two-factor.service';
     AttestationValidatorService,
     PasskeyService,
     SamlSsoService,
+    PostQuantumJwtService,
+
+    PreKeyService,
+
   ],
 })
 export class AuthModule {}

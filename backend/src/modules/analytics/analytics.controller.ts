@@ -12,6 +12,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OrgProductivityQueryDto } from './dto/org-metrics.dto';
+import type { OrgBenchmarkReportDto } from './dto/org-metrics.dto';
 import { ScyllaDbTelemetryService } from './scylladb-telemetry.service';
 import type {
   KeystrokeTelemetryEvent,
@@ -49,6 +51,31 @@ export class AnalyticsController {
       req.user.id,
       parsedEpsilon,
     );
+  }
+
+  @Post('org/benchmark')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Generate differentially private organization productivity and benchmark report (#542)',
+  })
+  @ApiBody({ type: OrgProductivityQueryDto })
+  async getOrgProductivityBenchmark(
+    @Request() req: { user: { id: string } },
+    @Body() query: OrgProductivityQueryDto,
+  ): Promise<OrgBenchmarkReportDto> {
+    return this.analyticsService.getOrgProductivityBenchmark(req.user.id, query);
+  }
+
+  @Get('privacy-budget/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Check current privacy loss budget consumption and remaining allocation (#542)',
+  })
+  async getPrivacyBudgetStatus(@Request() req: { user: { id: string } }) {
+    return this.analyticsService.getPrivacyBudgetStatus(req.user.id);
   }
 
   @Get('user/:username')
