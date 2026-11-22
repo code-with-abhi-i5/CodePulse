@@ -21,6 +21,8 @@ import type { CommentaryStyle, ShoutcasterMatchEvent } from '../esports/ai-shout
 import { RaidBossService } from './raid-boss.service';
 import type { RaidBossArchetype, RaidPatchSubmission } from './raid-boss.service';
 import { PredictionMarketService } from '../esports/prediction-market.service';
+import { SabotageEngineService, SABOTAGE_POWERUPS } from './sabotage-engine.service';
+import type { SabotageType, DefenseType } from './sabotage-engine.service';
 
 interface PlayerState {
   userId: string;
@@ -67,6 +69,7 @@ export class BattlesGateway
     @Optional() private readonly shoutcasterService?: AiShoutcasterService,
     @Optional() private readonly raidBossService?: RaidBossService,
     @Optional() private readonly predictionMarket?: PredictionMarketService,
+    @Optional() private readonly sabotageEngine?: SabotageEngineService,
   ) {}
 
   @WebSocketServer()
@@ -650,5 +653,119 @@ export class BattlesGateway
       originalTimestamp: data.timestamp,
       serverTimestamp: Date.now(),
     });
+  }
+
+  @SubscribeMessage('sabotage:deploy')
+  handleSabotageDeploy(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: {
+      battleId: string;
+      attackerId: string;
+      attackerUsername: string;
+      targetId: string;
+      targetUsername: string;
+      powerupType: SabotageType;
+      currentCode: string;
+    },
+  ) {
+    if (!this.sabotageEngine) return null;
+    const result = this.sabotageEngine.deploySabotage(data);
+
+    // Broadcast humorous event banner to entire battle room
+    this.server?.to(`battle:${data.battleId}`)?.emit('sabotage:announcement', {
+      battleId: data.battleId,
+      bannerMessage: result.bannerMessage,
+      deflected: result.deflected,
+      attackerId: data.attackerId,
+      targetId: data.targetId,
+      powerupType: data.powerupType,
+      timestamp: Date.now(),
+    });
+
+    // If not deflected, send the mutated code payload to the target player
+    if (!result.deflected && result.effect) {
+      this.server?.to(`battle:${data.battleId}`)?.emit('sabotage:effect', {
+        battleId: data.battleId,
+        targetId: data.targetId,
+        sabotageId: result.effect.id,
+        powerupType: data.powerupType,
+        mutatedCode: result.mutatedCode,
+        durationMs: SABOTAGE_POWERUPS[data.powerupType]?.durationMs || 30000,
+        expiresAt: result.effect.expiresAt,
+      });
+    }
+
+    client.emit('sabotage:deployed', {
+      success: true,
+      remainingPoints: result.remainingPoints,
+      deflected: result.deflected,
+    });
+
+    return result;
+  }
+
+  @SubscribeMessage('sabotage:counter')
+  handleSabotageCounter(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: {
+      battleId: string;
+      userId: string;
+      username: string;
+      defenseType: DefenseType;
+      currentCode: string;
+    },
+  ) {
+    if (!this.sabotageEngine) return null;
+    const result = this.sabotageEngine.activateDefense(data);
+
+    this.server?.to(`battle:${data.battleId}`)?.emit('sabotage:announcement', {
+      battleId: data.battleId,
+      bannerMessage: result.bannerMessage,
+      userId: data.userId,
+      defenseType: data.defenseType,
+      timestamp: Date.now(),
+    });
+
+    if (data.defenseType === 'CODE_FORMAT_PURGE') {
+      this.server?.to(`battle:${data.battleId}`)?.emit('sabotage:purged', {
+        battleId: data.battleId,
+        userId: data.userId,
+        restoredCode: result.restoredCode,
+        purgedCount: result.purgedCount,
+      });
+    }
+
+    client.emit('sabotage:counter_activated', {
+      success: true,
+      defenseType: data.defenseType,
+      remainingPoints: result.remainingPoints,
+    });
+
+    return result;
+  }
+
+  @SubscribeMessage('sabotage:get_inventory')
+  handleSabotageGetInventory(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { battleId: string; userId: string; username?: string },
+  ) {
+    if (!this.sabotageEngine) return null;
+    const state = this.sabotageEngine.getOrCreatePlayerState(
+      data.battleId,
+      data.userId,
+      data.username,
+    );
+
+    const payload = {
+      powerupPoints: state.powerupPoints,
+      hasShield: state.hasShield,
+      activeSabotages: state.activeSabotages,
+      powerupCatalog: SABOTAGE_POWERUPS,
+    };
+
+    client.emit('sabotage:inventory_state', payload);
+    return payload;
   }
 }

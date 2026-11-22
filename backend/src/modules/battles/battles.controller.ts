@@ -18,6 +18,8 @@ import { CreateBattleDto, UpdateBattleStatusDto } from './dto/battles.dto';
 import { SeasonResetService } from './season-reset.service';
 import { ReplayStreamService } from './replay-stream.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Optional } from '@nestjs/common';
+import { SabotageEngineService, SABOTAGE_POWERUPS } from './sabotage-engine.service';
 
 @ApiTags('battles')
 @Controller('battles')
@@ -26,7 +28,31 @@ export class BattlesController {
     private readonly battlesService: BattlesService,
     private readonly seasonReset: SeasonResetService,
     private readonly replayStream: ReplayStreamService,
+    @Optional() private readonly sabotageEngine?: SabotageEngineService,
   ) {}
+
+  @Get('sabotage/catalog')
+  @ApiOperation({ summary: 'Get available Red-Team vs Blue-Team battle sabotage powerups catalog' })
+  getSabotageCatalog() {
+    return SABOTAGE_POWERUPS;
+  }
+
+  @Get(':battleId/sabotage/:userId')
+  @ApiOperation({ summary: 'Get player battle sabotage state, active effects, and powerup points' })
+  getPlayerSabotageState(
+    @Param('battleId') battleId: string,
+    @Param('userId') userId: string,
+  ) {
+    if (!this.sabotageEngine) return null;
+    return this.sabotageEngine.getOrCreatePlayerState(battleId, userId);
+  }
+
+  @Get(':battleId/sabotage-audit')
+  @ApiOperation({ summary: 'Get match sabotage event audit logs for anti-cheat and replay review' })
+  getBattleSabotageAudit(@Param('battleId') battleId: string) {
+    if (!this.sabotageEngine) return [];
+    return this.sabotageEngine.getAuditLogs(battleId);
+  }
 
   @Get('season/leaderboard')
   @ApiOperation({
