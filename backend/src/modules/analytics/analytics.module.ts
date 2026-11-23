@@ -13,9 +13,14 @@ import { GreenCarbonEstimatorService } from './green-carbon-estimator.service';
 import { MonteCarloVelocityService } from './monte-carlo-velocity.service';
 import { SkillMatrixService } from './skill-matrix.service';
 import { ArchitecturalDriftService } from './architectural-drift.service';
+import { DependencyGraphService } from './dependency-graph.service';
 import { DoraMetricsService } from './dora-metrics.service';
+import { DoraCalculatorService } from './dora-calculator.service';
 import { OwnershipHeatmapService } from './ownership-heatmap.service';
 import { FlowStateService } from './flow-state.service';
+import { ZpdMatcherService } from './zpd-matcher.service';
+import { GitBlameAnalyzerService } from './git-blame-analyzer.service';
+import { CognitiveFatigueService } from './cognitive-fatigue.service';
 
 @Module({
   controllers: [
@@ -34,10 +39,15 @@ import { FlowStateService } from './flow-state.service';
     GreenCarbonEstimatorService,
     MonteCarloVelocityService,
     SkillMatrixService,
+    ZpdMatcherService,
     ArchitecturalDriftService,
+    DependencyGraphService,
     DoraMetricsService,
+    DoraCalculatorService,
     OwnershipHeatmapService,
     FlowStateService,
+    GitBlameAnalyzerService,
+    CognitiveFatigueService,
   ],
   exports: [
     AnalyticsService,
@@ -48,10 +58,15 @@ import { FlowStateService } from './flow-state.service';
     GreenCarbonEstimatorService,
     MonteCarloVelocityService,
     SkillMatrixService,
+    ZpdMatcherService,
     ArchitecturalDriftService,
+    DependencyGraphService,
     DoraMetricsService,
+    DoraCalculatorService,
     OwnershipHeatmapService,
     FlowStateService,
+    GitBlameAnalyzerService,
+    CognitiveFatigueService,
   ],
 })
 export class AnalyticsModule {}
