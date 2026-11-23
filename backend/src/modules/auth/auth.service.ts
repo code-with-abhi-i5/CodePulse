@@ -14,6 +14,7 @@ import { JwtService } from '@nestjs/jwt';
 import { SyncService } from '../sync/sync.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { VaultService } from '../security/vault.service';
+import { KmsEncryptionService } from '../security/kms-encryption.service';
 import { TwoFactorService } from './two-factor.service';
 import { BruteForceService } from './brute-force.service';
 import { HttpException, HttpStatus } from '@nestjs/common';
@@ -62,6 +63,7 @@ export class AuthService {
     @Optional() private readonly vaultService?: VaultService,
     @Optional() private readonly twoFactorService?: TwoFactorService,
     @Optional() private readonly bruteForceService?: BruteForceService,
+    @Optional() private readonly kmsEncryptionService?: KmsEncryptionService,
   ) {
     this.tfaService = this.twoFactorService || new TwoFactorService();
   }
@@ -564,6 +566,21 @@ export class AuthService {
       // 3. Find or create the user in the database
       const githubIdString = String(githubUser.id);
 
+      // Envelope-encrypt GitHub OAuth access token with KMS
+      let encryptedGithubToken: string | undefined;
+      if (this.kmsEncryptionService) {
+        encryptedGithubToken = this.kmsEncryptionService.encryptToken(accessToken);
+      }
+
+      const existingUser = await this.prisma.user.findUnique({
+        where: { githubId: githubIdString },
+        select: { settings: true },
+      });
+      const existingSettings = (existingUser?.settings as Record<string, any>) || {};
+      const updatedSettings = encryptedGithubToken
+        ? { ...existingSettings, encryptedGithubToken }
+        : existingSettings;
+
       const user = await this.prisma.user.upsert({
         where: { githubId: githubIdString },
         update: {
@@ -576,6 +593,7 @@ export class AuthService {
           website: githubUser.blog || null,
           githubUrl: githubUser.html_url || null,
           isOnline: true,
+          settings: updatedSettings,
         },
         create: {
           githubId: githubIdString,
@@ -589,6 +607,7 @@ export class AuthService {
           website: githubUser.blog || null,
           githubUrl: githubUser.html_url || null,
           isOnline: true,
+          settings: updatedSettings,
         },
       });
 
@@ -822,5 +841,37 @@ export class AuthService {
     });
 
     return { disabled: true, message: 'Two-factor authentication has been disabled.' };
+  }
+
+  // --- KMS Envelope Encryption Architecture (#391) ---
+
+  /**
+   * Encrypts a GitHub access token using AES-256-GCM Envelope Encryption.
+   */
+  public encryptGithubToken(token: string, keyId?: string): string {
+    if (!this.kmsEncryptionService) {
+      return token;
+    }
+    return this.kmsEncryptionService.encryptToken(token, keyId);
+  }
+
+  /**
+   * Decrypts an envelope-encrypted GitHub access token.
+   */
+  public decryptGithubToken(encryptedToken: string): string {
+    if (!this.kmsEncryptionService) {
+      return encryptedToken;
+    }
+    return this.kmsEncryptionService.decryptToken(encryptedToken);
+  }
+
+  /**
+   * Re-encrypts an existing encrypted token under a new Master KMS Key.
+   */
+  public reencryptGithubToken(encryptedToken: string, targetKeyId?: string): string {
+    if (!this.kmsEncryptionService) {
+      return encryptedToken;
+    }
+    return this.kmsEncryptionService.reencryptToken(encryptedToken, targetKeyId);
   }
 }

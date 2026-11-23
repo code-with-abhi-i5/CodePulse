@@ -20,6 +20,7 @@ import { WatermarkService } from './watermark.service';
 import { HypeMeterService } from './hype-meter.service';
 import { HypeStormGateway } from './hype-storm.gateway';
 import { RedisService } from '../../common/redis/redis.service';
+import { RedlockService } from '../../common/redis/redlock.service';
 import { TournamentEngineService } from './tournament-engine.service';
 import { EsportsModule } from '../esports/esports.module';
 import { AiModule } from '../ai/ai.module';
@@ -109,6 +110,7 @@ import { TrueSkill2Service } from './trueskill2.service';
     TeamMatchmakingService,
 
     TrueSkill2Service,
+    RedlockService,
   ],
   exports: [
     BattlesService,
@@ -146,6 +148,7 @@ import { TrueSkill2Service } from './trueskill2.service';
     TeamMatchmakingService,
 
     TrueSkill2Service,
+    RedlockService,
   ],
 })
 export class BattlesModule {}

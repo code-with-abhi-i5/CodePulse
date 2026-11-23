@@ -10,6 +10,8 @@ import { DataArchiverService } from './data-archiver.service';
 import { ShardRebalancerService } from './shard-rebalancer.service';
 import { IndexAdvisorService } from './index-advisor.service';
 import { CostAttributionService } from './cost-attribution.service';
+import { SavingsLedgerService } from './savings-ledger.service';
+import { FinOpsReaperService } from './finops-reaper.service';
 
 @Module({
   controllers: [ActiveActiveReplicatorController],
@@ -24,6 +26,8 @@ import { CostAttributionService } from './cost-attribution.service';
     ShardRebalancerService,
     IndexAdvisorService,
     CostAttributionService,
+    SavingsLedgerService,
+    FinOpsReaperService,
   ],
   exports: [
     ChaosRunnerService,
@@ -36,6 +40,8 @@ import { CostAttributionService } from './cost-attribution.service';
     ShardRebalancerService,
     IndexAdvisorService,
     CostAttributionService,
+    SavingsLedgerService,
+    FinOpsReaperService,
   ],
 })
 export class OpsModule {}

@@ -132,4 +132,63 @@ describe('BattlesService - ELO Rating Engine (#87)', () => {
       }),
     );
   });
+
+  describe('Distributed Mutual Exclusion (Redlock #374)', () => {
+    let redlock: any;
+    let serviceWithRedlock: BattlesService;
+
+    beforeEach(() => {
+      redlock = {
+        withMatchmakingLock: jest.fn().mockImplementation((fn) => fn({ resourceKey: 'lock:matchmaking:queue' })),
+        withUserBalanceLock: jest.fn().mockImplementation((userId, fn) => fn({ resourceKey: `lock:user:balance:${userId}` })),
+        withBattleRoomLock: jest.fn().mockImplementation((battleId, fn) => fn({ resourceKey: `lock:room:${battleId}` })),
+      };
+
+      serviceWithRedlock = new BattlesService(
+        mockPrisma,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        redlock,
+      );
+    });
+
+    it('enqueues and leaves matchmaking queue guarded by lock:matchmaking:queue', async () => {
+      const joinRes = await serviceWithRedlock.joinMatchmakingQueue('user-mm-1', { elo: 1200 });
+      expect(redlock.withMatchmakingLock).toHaveBeenCalled();
+      expect(joinRes.status).toBe('QUEUED');
+      expect(joinRes.userId).toBe('user-mm-1');
+
+      const status = await serviceWithRedlock.getMatchmakingQueueStatus();
+      expect(status.inQueueCount).toBe(1);
+
+      const leaveRes = await serviceWithRedlock.leaveMatchmakingQueue('user-mm-1');
+      expect(leaveRes.success).toBe(true);
+    });
+
+    it('places wager escrow guarded by lock:user:balance and lock:room', async () => {
+      serviceWithRedlock.setUserBalance('user-wag-1', 500);
+
+      const wager = await serviceWithRedlock.placeWager('user-wag-1', 'battle-101', 150);
+      expect(redlock.withUserBalanceLock).toHaveBeenCalledWith('user-wag-1', expect.any(Function));
+      expect(redlock.withBattleRoomLock).toHaveBeenCalledWith('battle-101', expect.any(Function));
+      expect(wager.amount).toBe(150);
+      expect(wager.remainingBalance).toBe(350);
+      expect(wager.status).toBe('ESCROW');
+    });
+
+    it('settles wager and pays out 2x to winner guarded by distributed locks', async () => {
+      serviceWithRedlock.setUserBalance('winner-1', 200);
+      serviceWithRedlock.setUserBalance('loser-1', 200);
+
+      const settlement = await serviceWithRedlock.settleWager('battle-202', 'winner-1', 'loser-1', 100);
+      expect(redlock.withBattleRoomLock).toHaveBeenCalledWith('battle-202', expect.any(Function));
+      expect(redlock.withUserBalanceLock).toHaveBeenCalledWith('winner-1', expect.any(Function));
+      expect(settlement.payout).toBe(200);
+      expect(settlement.winnerNewBalance).toBe(400);
+      expect(settlement.status).toBe('PAID_OUT');
+    });
+  });
 });
