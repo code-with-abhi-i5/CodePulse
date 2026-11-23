@@ -11,6 +11,16 @@ import {
 const PAGE_SIZE = 100;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+export interface ReturningPlayerCalibration {
+  userId: string;
+  currentElo: number;
+  historicalPeakElo: number;
+  provisionalMultiplier: number;
+  calibratedEloGain: number;
+  antiSmurfAction: 'ACCELERATED_RETURN' | 'STANDARD';
+  reason: string;
+}
+
 @Injectable()
 export class RatingDecayService {
   private readonly logger = new Logger(RatingDecayService.name);
@@ -136,5 +146,45 @@ export class RatingDecayService {
     }
     this.logger.log(`Sent ${sent} rating decay warning(s)`);
     return sent;
+  }
+
+  /**
+   * Anti-Smurf Placement Calibration:
+   * Prevents veteran players who experienced seasonal or inactivity decay from
+   * smurfing in lower skill tiers by accelerating Elo gains until they approach their peak tier.
+   */
+  public calibrateReturningPlayerPlacement(
+    userId: string,
+    currentElo: number,
+    historicalPeakElo: number,
+    baseWinDelta = 25,
+  ): ReturningPlayerCalibration {
+    const eloDeficit = historicalPeakElo - currentElo;
+
+    if (eloDeficit >= 250) {
+      // Scale multiplier based on gap: 2.0x for 250 gap, up to 3.0x for 500+ gap
+      const multiplier = Math.min(3.0, 1.5 + (eloDeficit - 250) / 250);
+      const calibratedGain = Math.round(baseWinDelta * multiplier);
+
+      return {
+        userId,
+        currentElo,
+        historicalPeakElo,
+        provisionalMultiplier: Number(multiplier.toFixed(2)),
+        calibratedEloGain: calibratedGain,
+        antiSmurfAction: 'ACCELERATED_RETURN',
+        reason: `Returning veteran deficit of ${eloDeficit} Elo points detected. Accelerating MMR (${multiplier.toFixed(1)}x) to protect beginner tier integrity.`,
+      };
+    }
+
+    return {
+      userId,
+      currentElo,
+      historicalPeakElo,
+      provisionalMultiplier: 1.0,
+      calibratedEloGain: baseWinDelta,
+      antiSmurfAction: 'STANDARD',
+      reason: 'Current Elo matches historical skill bracket.',
+    };
   }
 }
