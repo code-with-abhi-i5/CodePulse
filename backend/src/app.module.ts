@@ -44,6 +44,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { TournamentsModule } from './modules/tournaments/tournaments.module';
 import { OpsModule } from './modules/ops/ops.module';
 import { GrpcModule } from './modules/grpc/grpc.module';
+import { TelemetryModule } from './modules/telemetry/telemetry.module';
 
 import { RealtimeModule } from './modules/realtime/realtime.module';
 
@@ -164,6 +165,7 @@ import { VaultModule } from './common/vault/vault.module';
     AiModule,
     TournamentsModule,
     OpsModule,
+    TelemetryModule,
 
     RealtimeModule,
 
