@@ -16,6 +16,8 @@ import { ArchitecturalDriftService } from './architectural-drift.service';
 import { DoraMetricsService } from './dora-metrics.service';
 import { OwnershipHeatmapService } from './ownership-heatmap.service';
 import { FlowStateService } from './flow-state.service';
+import { TumblingWindowService } from './tumbling-window.service';
+import { StreamAggregatorService } from './stream-aggregator.service';
 
 @Module({
   controllers: [
@@ -38,6 +40,8 @@ import { FlowStateService } from './flow-state.service';
     DoraMetricsService,
     OwnershipHeatmapService,
     FlowStateService,
+    TumblingWindowService,
+    StreamAggregatorService,
   ],
   exports: [
     AnalyticsService,
@@ -52,6 +56,8 @@ import { FlowStateService } from './flow-state.service';
     DoraMetricsService,
     OwnershipHeatmapService,
     FlowStateService,
+    TumblingWindowService,
+    StreamAggregatorService,
   ],
 })
 export class AnalyticsModule {}
