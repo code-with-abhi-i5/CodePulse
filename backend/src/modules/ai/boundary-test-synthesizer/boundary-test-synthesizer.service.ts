@@ -422,8 +422,8 @@ export class BoundaryTestSynthesizerService implements OnModuleInit, OnModuleDes
     actorId: string,
     action: string,
     resourceId: string,
-    oldState?: Record<string, unknown>,
-    newState?: Record<string, unknown>,
+    oldState?: any,
+    newState?: any,
     details?: string
   ): void {
     this.auditLog.push({

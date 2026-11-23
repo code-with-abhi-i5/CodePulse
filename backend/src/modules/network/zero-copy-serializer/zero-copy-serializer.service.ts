@@ -38,7 +38,7 @@ export class ZeroCopySerializerService implements OnModuleInit, OnModuleDestroy 
 
   private config: ZeroCopySerializerConfig = {
     id: 'cfg-zero-copy-serializer-default',
-    name: '[NET-SERIALIZER-092]: Zero-Copy FlatBuffers / Cap'n Proto Serialization Engine for Real-Time Esports Packets',
+    name: "[NET-SERIALIZER-092]: Zero-Copy FlatBuffers / Cap'n Proto Serialization Engine for Real-Time Esports Packets",
     enabled: true,
     maxConcurrency: 100,
     sampleIntervalMs: 1000,
@@ -422,8 +422,8 @@ export class ZeroCopySerializerService implements OnModuleInit, OnModuleDestroy 
     actorId: string,
     action: string,
     resourceId: string,
-    oldState?: Record<string, unknown>,
-    newState?: Record<string, unknown>,
+    oldState?: any,
+    newState?: any,
     details?: string
   ): void {
     this.auditLog.push({
