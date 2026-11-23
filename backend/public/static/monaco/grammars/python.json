@@ -1,0 +1,18 @@
+{
+  "scopeName": "source.python",
+  "patterns": [
+    {
+      "include": "#statement"
+    }
+  ],
+  "repository": {
+    "statement": {
+      "patterns": [
+        {
+          "name": "keyword.control.py",
+          "match": "\\b(def|class|if|elif|else|for|while|try|except|import)\\b"
+        }
+      ]
+    }
+  }
+}

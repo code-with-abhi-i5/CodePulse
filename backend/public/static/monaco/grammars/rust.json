@@ -1,0 +1,18 @@
+{
+  "scopeName": "source.rust",
+  "patterns": [
+    {
+      "include": "#rust-core"
+    }
+  ],
+  "repository": {
+    "rust-core": {
+      "patterns": [
+        {
+          "name": "keyword.control.rust",
+          "match": "\\b(fn|let|mut|struct|enum|impl|trait|match|pub)\\b"
+        }
+      ]
+    }
+  }
+}

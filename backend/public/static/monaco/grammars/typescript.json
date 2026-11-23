@@ -1,0 +1,22 @@
+{
+  "scopeName": "source.ts",
+  "patterns": [
+    {
+      "include": "#expression"
+    }
+  ],
+  "repository": {
+    "expression": {
+      "patterns": [
+        {
+          "name": "keyword.control.ts",
+          "match": "\\b(if|else|while|for|return|class|interface|function)\\b"
+        },
+        {
+          "name": "storage.type.ts",
+          "match": "\\b(const|let|var|type|enum)\\b"
+        }
+      ]
+    }
+  }
+}
