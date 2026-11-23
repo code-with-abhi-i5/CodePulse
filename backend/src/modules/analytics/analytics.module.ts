@@ -16,6 +16,7 @@ import { ArchitecturalDriftService } from './architectural-drift.service';
 import { DoraMetricsService } from './dora-metrics.service';
 import { OwnershipHeatmapService } from './ownership-heatmap.service';
 import { FlowStateService } from './flow-state.service';
+import { ZpdMatcherService } from './zpd-matcher.service';
 
 @Module({
   controllers: [
@@ -34,6 +35,7 @@ import { FlowStateService } from './flow-state.service';
     GreenCarbonEstimatorService,
     MonteCarloVelocityService,
     SkillMatrixService,
+    ZpdMatcherService,
     ArchitecturalDriftService,
     DoraMetricsService,
     OwnershipHeatmapService,
@@ -48,6 +50,7 @@ import { FlowStateService } from './flow-state.service';
     GreenCarbonEstimatorService,
     MonteCarloVelocityService,
     SkillMatrixService,
+    ZpdMatcherService,
     ArchitecturalDriftService,
     DoraMetricsService,
     OwnershipHeatmapService,
