@@ -11,6 +11,7 @@ import { TyposquatScannerService } from './typosquat-scanner.service';
 import { TaintAnalyzerService } from './taint-analyzer.service';
 import { SecurityMttrService } from './security-mttr.service';
 import { KmsEncryptionService } from './kms-encryption.service';
+import { PatchSynthesizerService } from './patch-synthesizer.service';
 import { PowChallengeGuard } from '../../common/guards/pow-challenge.guard';
 import { ThreatDetectorService } from './threat-detector.service';
 import { ThreatMonitorInterceptor } from '../../common/interceptors/threat-monitor.interceptor';
@@ -38,6 +39,7 @@ import {
     TaintAnalyzerService,
     SecurityMttrService,
     KmsEncryptionService,
+    PatchSynthesizerService,
   ],
   exports: [
     AcmeCertService,
@@ -55,6 +57,7 @@ import {
     TaintAnalyzerService,
     SecurityMttrService,
     KmsEncryptionService,
+    PatchSynthesizerService,
   ],
 })
 export class SecurityModule {}

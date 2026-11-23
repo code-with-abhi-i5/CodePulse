@@ -1666,3 +1666,31 @@ model IssueRepro {
   @@index([createdAt])
   @@map("issue_repros")
 }
+
+model SecurityPatch {
+  id                    String   @id @default(uuid())
+  cveId                 String
+  packageName           String
+  currentVersion        String
+  patchedVersion        String
+  cvssScore             Float
+  severity              String   @default("HIGH") // CRITICAL, HIGH, MEDIUM, LOW
+  advisorySource        String   @default("OSV") // OSV, GITHUB, NVD
+  advisoryUrl           String?
+  vulnerabilitySummary  String?  @db.Text
+  breakingChanges       String?  @db.Text
+  shimCode              String?  @db.Text
+  diffSummary           String   @db.Text
+  testPassRate          Float    @default(1.0)
+  verifiedInSandbox     Boolean  @default(true)
+  pullRequestNumber     Int?
+  pullRequestTitle      String?
+  pullRequestUrl        String?
+  status                String   @default("SYNTHESIZED") // DETECTED, SYNTHESIZED, VERIFIED, PR_CREATED, MERGED
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([packageName, cveId])
+  @@index([status])
+  @@map("security_patches")
+}
