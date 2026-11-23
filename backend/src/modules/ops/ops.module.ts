@@ -10,6 +10,8 @@ import { DataArchiverService } from './data-archiver.service';
 import { ShardRebalancerService } from './shard-rebalancer.service';
 import { IndexAdvisorService } from './index-advisor.service';
 import { CostAttributionService } from './cost-attribution.service';
+import { EtcdWatcherService } from './etcd-watcher.service';
+import { DynamicConfigReloaderService } from './dynamic-config-reloader.service';
 
 @Module({
   controllers: [ActiveActiveReplicatorController],
@@ -24,6 +26,8 @@ import { CostAttributionService } from './cost-attribution.service';
     ShardRebalancerService,
     IndexAdvisorService,
     CostAttributionService,
+    EtcdWatcherService,
+    DynamicConfigReloaderService,
   ],
   exports: [
     ChaosRunnerService,
@@ -36,6 +40,8 @@ import { CostAttributionService } from './cost-attribution.service';
     ShardRebalancerService,
     IndexAdvisorService,
     CostAttributionService,
+    EtcdWatcherService,
+    DynamicConfigReloaderService,
   ],
 })
 export class OpsModule {}
