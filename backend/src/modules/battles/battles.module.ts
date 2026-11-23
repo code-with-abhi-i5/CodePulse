@@ -15,6 +15,7 @@ import { MetricsModule } from '../metrics/metrics.module';
 import { XpModule } from '../xp/xp.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { ReplayStreamService } from './replay-stream.service';
+import { ReplayEngineService } from './replay-engine.service';
 import { CryptoModule } from '../crypto/crypto.module';
 import { WatermarkService } from './watermark.service';
 import { HypeMeterService } from './hype-meter.service';
@@ -79,6 +80,7 @@ import { TrueSkill2Service } from './trueskill2.service';
     BattlesLifecycleScheduler,
     BattlesLifecycleWorker,
     ReplayStreamService,
+    ReplayEngineService,
     WatermarkService,
     HypeMeterService,
     HypeStormGateway,
@@ -117,6 +119,7 @@ import { TrueSkill2Service } from './trueskill2.service';
     JitterBufferService,
     BattlesGateway,
     ReplayStreamService,
+    ReplayEngineService,
     WatermarkService,
     HypeMeterService,
     HypeStormGateway,
