@@ -18,6 +18,7 @@ import { decayFloorForElo } from './rating-decay';
 import { AntiSmurfService } from './anti-smurf.service';
 import { TranspilerService } from '../ai/transpiler.service';
 import { PlagiarismService } from './plagiarism.service';
+import { RedlockService } from '../../common/redis/redlock.service';
 import type { MatchResultTelemetryDto } from './dto/match-result.dto';
 
 export interface EloOutcome {
@@ -38,6 +39,7 @@ export class BattlesService {
     @Optional() private readonly antiSmurfService?: AntiSmurfService,
     @Optional() private readonly transpilerService?: TranspilerService,
     @Optional() private readonly plagiarismService?: PlagiarismService,
+    @Optional() private readonly redlockService?: RedlockService,
   ) {}
 
   /**
@@ -255,54 +257,69 @@ export class BattlesService {
       );
     }
 
-    const endsAt = new Date(dto.endsAt);
-    if (isNaN(endsAt.getTime()) || endsAt <= new Date()) {
-      throw new BadRequestException('Battle endsAt must be a valid future date');
+    const executeCreate = async () => {
+      const endsAt = new Date(dto.endsAt);
+      if (isNaN(endsAt.getTime()) || endsAt <= new Date()) {
+        throw new BadRequestException('Battle endsAt must be a valid future date');
+      }
+
+      const [challenger, opponent] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: dto.challengerId } }),
+        this.prisma.user.findUnique({ where: { id: dto.opponentId } }),
+      ]);
+
+      if (!challenger) {
+        throw new NotFoundException(
+          `Challenger user ${dto.challengerId} not found`,
+        );
+      }
+      if (!opponent) {
+        throw new NotFoundException(`Opponent user ${dto.opponentId} not found`);
+      }
+
+      const existingActive = await this.prisma.battle.findFirst({
+        where: {
+          status: 'ACTIVE',
+          endsAt: { gt: new Date() },
+          OR: [
+            { challengerId: dto.challengerId },
+            { opponentId: dto.challengerId },
+            { challengerId: dto.opponentId },
+            { opponentId: dto.opponentId },
+          ],
+        },
+      });
+
+      if (existingActive) {
+        throw new BadRequestException(
+          'One of the participants already has an active battle in progress',
+        );
+      }
+
+      return this.prisma.battle.create({
+        data: {
+          ...dto,
+          endsAt,
+        },
+        include: {
+          challenger: { select: { id: true, username: true, avatar: true } },
+          opponent: { select: { id: true, username: true, avatar: true } },
+        },
+      });
+    };
+
+    if (this.redlockService) {
+      const roomKey = [dto.challengerId, dto.opponentId].sort().join(':');
+      return this.redlockService.withBattleRoomLock(roomKey, async () => {
+        return this.redlockService!.withUserBalanceLock(dto.challengerId, async () => {
+          return this.redlockService!.withUserBalanceLock(dto.opponentId, async () => {
+            return executeCreate();
+          });
+        });
+      });
     }
 
-    const [challenger, opponent] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: dto.challengerId } }),
-      this.prisma.user.findUnique({ where: { id: dto.opponentId } }),
-    ]);
-
-    if (!challenger) {
-      throw new NotFoundException(
-        `Challenger user ${dto.challengerId} not found`,
-      );
-    }
-    if (!opponent) {
-      throw new NotFoundException(`Opponent user ${dto.opponentId} not found`);
-    }
-
-    const existingActive = await this.prisma.battle.findFirst({
-      where: {
-        status: 'ACTIVE',
-        endsAt: { gt: new Date() },
-        OR: [
-          { challengerId: dto.challengerId },
-          { opponentId: dto.challengerId },
-          { challengerId: dto.opponentId },
-          { opponentId: dto.opponentId },
-        ],
-      },
-    });
-
-    if (existingActive) {
-      throw new BadRequestException(
-        'One of the participants already has an active battle in progress',
-      );
-    }
-
-    return this.prisma.battle.create({
-      data: {
-        ...dto,
-        endsAt,
-      },
-      include: {
-        challenger: { select: { id: true, username: true, avatar: true } },
-        opponent: { select: { id: true, username: true, avatar: true } },
-      },
-    });
+    return executeCreate();
   }
 
   async updateBattleStatus(
@@ -1033,5 +1050,228 @@ export class BattlesService {
       opponentUserId,
       standardTemplate,
     });
+  }
+
+  // --- Distributed Mutual Exclusion (Redlock #374) ---
+
+  // In-memory queue fallback for matchmaking
+  private readonly memoryMatchmakingQueue = new Map<
+    string,
+    { userId: string; joinedAt: number; data?: any }
+  >();
+
+  // In-memory user balance store for testing/fallback
+  private readonly memoryUserBalances = new Map<string, number>();
+
+  // In-memory wager store for testing/fallback
+  private readonly memoryWagers = new Map<
+    string,
+    { battleId: string; userId: string; amount: number; status: string; createdAt: Date }
+  >();
+
+  /**
+   * Enqueues user into global matchmaking queue under Redlock distributed lock.
+   * Lock key: `lock:matchmaking:queue`
+   */
+  async joinMatchmakingQueue(
+    userId: string,
+    data?: { elo?: number; region?: string; category?: string }
+  ) {
+    const executeJoin = async () => {
+      this.memoryMatchmakingQueue.set(userId, {
+        userId,
+        joinedAt: Date.now(),
+        data,
+      });
+      return {
+        status: 'QUEUED',
+        userId,
+        position: this.memoryMatchmakingQueue.size,
+        joinedAt: Date.now(),
+      };
+    };
+
+    if (this.redlockService) {
+      return this.redlockService.withMatchmakingLock(async () => executeJoin());
+    }
+    return executeJoin();
+  }
+
+  /**
+   * Leaves global matchmaking queue under Redlock distributed lock.
+   */
+  async leaveMatchmakingQueue(userId: string) {
+    const executeLeave = async () => {
+      const existed = this.memoryMatchmakingQueue.delete(userId);
+      return { success: existed, userId };
+    };
+
+    if (this.redlockService) {
+      return this.redlockService.withMatchmakingLock(async () => executeLeave());
+    }
+    return executeLeave();
+  }
+
+  /**
+   * Retrieves matchmaking queue status under Redlock distributed lock.
+   */
+  async getMatchmakingQueueStatus() {
+    const executeStatus = async () => {
+      return {
+        inQueueCount: this.memoryMatchmakingQueue.size,
+        queuedUsers: Array.from(this.memoryMatchmakingQueue.keys()),
+      };
+    };
+
+    if (this.redlockService) {
+      return this.redlockService.withMatchmakingLock(async () => executeStatus());
+    }
+    return executeStatus();
+  }
+
+  /**
+   * Places an escrow wager under distributed balance lock and room lock.
+   * Eliminates double-spending across concurrent requests.
+   * Locks: `lock:user:balance:<userId>` and `lock:room:<battleId>`
+   */
+  async placeWager(userId: string, battleId: string, amount: number) {
+    if (amount <= 0) {
+      throw new BadRequestException('Wager amount must be positive');
+    }
+
+    const executePlace = async () => {
+      let currentBalance = this.memoryUserBalances.get(userId);
+      if (currentBalance === undefined) {
+        currentBalance = 1000;
+        this.memoryUserBalances.set(userId, currentBalance);
+      }
+
+      if (currentBalance < amount) {
+        throw new BadRequestException(
+          `Insufficient balance: have ${currentBalance}, required ${amount}`
+        );
+      }
+
+      const newBalance = currentBalance - amount;
+      this.memoryUserBalances.set(userId, newBalance);
+
+      const wagerId = `wager_${battleId}_${userId}`;
+      const record = {
+        battleId,
+        userId,
+        amount,
+        status: 'ESCROW',
+        createdAt: new Date(),
+      };
+      this.memoryWagers.set(wagerId, record);
+
+      return {
+        wagerId,
+        userId,
+        battleId,
+        amount,
+        remainingBalance: newBalance,
+        status: 'ESCROW',
+      };
+    };
+
+    if (this.redlockService) {
+      return this.redlockService.withUserBalanceLock(userId, async () => {
+        return this.redlockService!.withBattleRoomLock(battleId, async () => {
+          return executePlace();
+        });
+      });
+    }
+
+    return executePlace();
+  }
+
+  /**
+   * Settles wager pool and awards 2x payout to winner under distributed locks.
+   * Locks: `lock:room:<battleId>`, `lock:user:balance:<winnerId>`, `lock:user:balance:<loserId>`
+   */
+  async settleWager(
+    battleId: string,
+    winnerId: string,
+    loserId: string,
+    wagerAmount: number
+  ) {
+    const executeSettle = async () => {
+      const payout = wagerAmount * 2;
+      const winnerBalance = (this.memoryUserBalances.get(winnerId) ?? 1000) + payout;
+      this.memoryUserBalances.set(winnerId, winnerBalance);
+
+      const wagerKey = `wager_${battleId}_${winnerId}`;
+      const existing = this.memoryWagers.get(wagerKey);
+      if (existing) {
+        existing.status = 'PAID_OUT';
+      }
+
+      return {
+        battleId,
+        winnerId,
+        loserId,
+        payout,
+        winnerNewBalance: winnerBalance,
+        status: 'PAID_OUT',
+      };
+    };
+
+    if (this.redlockService) {
+      return this.redlockService.withBattleRoomLock(battleId, async () => {
+        return this.redlockService!.withUserBalanceLock(winnerId, async () => {
+          return this.redlockService!.withUserBalanceLock(loserId, async () => {
+            return executeSettle();
+          });
+        });
+      });
+    }
+
+    return executeSettle();
+  }
+
+  /**
+   * Refunds wager from escrow back to user balance under distributed locks.
+   */
+  async refundWager(battleId: string, userId: string, amount: number) {
+    const executeRefund = async () => {
+      const currentBalance = (this.memoryUserBalances.get(userId) ?? 1000) + amount;
+      this.memoryUserBalances.set(userId, currentBalance);
+
+      const wagerKey = `wager_${battleId}_${userId}`;
+      const existing = this.memoryWagers.get(wagerKey);
+      if (existing) {
+        existing.status = 'REFUNDED';
+      }
+
+      return {
+        battleId,
+        userId,
+        refundedAmount: amount,
+        newBalance: currentBalance,
+        status: 'REFUNDED',
+      };
+    };
+
+    if (this.redlockService) {
+      return this.redlockService.withBattleRoomLock(battleId, async () => {
+        return this.redlockService!.withUserBalanceLock(userId, async () => {
+          return executeRefund();
+        });
+      });
+    }
+
+    return executeRefund();
+  }
+
+  /**
+   * Test balance utilities
+   */
+  public setUserBalance(userId: string, balance: number): void {
+    this.memoryUserBalances.set(userId, balance);
+  }
+
+  public getUserBalance(userId: string): number {
+    return this.memoryUserBalances.get(userId) ?? 1000;
   }
 }

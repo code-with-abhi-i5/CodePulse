@@ -12,15 +12,20 @@ import { ComplexityService } from './complexity.service';
 import { GreenCarbonEstimatorService } from './green-carbon-estimator.service';
 import { MonteCarloVelocityService } from './monte-carlo-velocity.service';
 import { SkillMatrixService } from './skill-matrix.service';
+import { ZpdMatcherService } from './zpd-matcher.service';
 import { ArchitecturalDriftService } from './architectural-drift.service';
 import { DependencyGraphService } from './dependency-graph.service';
 import { DoraMetricsService } from './dora-metrics.service';
 import { DoraCalculatorService } from './dora-calculator.service';
 import { OwnershipHeatmapService } from './ownership-heatmap.service';
 import { FlowStateService } from './flow-state.service';
-import { ZpdMatcherService } from './zpd-matcher.service';
 import { GitBlameAnalyzerService } from './git-blame-analyzer.service';
 import { CognitiveFatigueService } from './cognitive-fatigue.service';
+import { ChurnFilterService } from './churn-filter.service';
+import { ProductivityNormalizerService } from './productivity-normalizer.service';
+import { TumblingWindowService } from './tumbling-window.service';
+import { StreamAggregatorService } from './stream-aggregator.service';
+import { DebtForecasterService } from './debt-forecaster.service';
 
 @Module({
   controllers: [
@@ -48,6 +53,11 @@ import { CognitiveFatigueService } from './cognitive-fatigue.service';
     FlowStateService,
     GitBlameAnalyzerService,
     CognitiveFatigueService,
+    ChurnFilterService,
+    ProductivityNormalizerService,
+    TumblingWindowService,
+    StreamAggregatorService,
+    DebtForecasterService,
   ],
   exports: [
     AnalyticsService,
@@ -67,6 +77,11 @@ import { CognitiveFatigueService } from './cognitive-fatigue.service';
     FlowStateService,
     GitBlameAnalyzerService,
     CognitiveFatigueService,
+    ChurnFilterService,
+    ProductivityNormalizerService,
+    TumblingWindowService,
+    StreamAggregatorService,
+    DebtForecasterService,
   ],
 })
 export class AnalyticsModule {}

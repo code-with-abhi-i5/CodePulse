@@ -422,8 +422,8 @@ export class CodebaseGraphRagService implements OnModuleInit, OnModuleDestroy {
     actorId: string,
     action: string,
     resourceId: string,
-    oldState?: Record<string, unknown>,
-    newState?: Record<string, unknown>,
+    oldState?: any,
+    newState?: any,
     details?: string
   ): void {
     this.auditLog.push({
@@ -432,8 +432,8 @@ export class CodebaseGraphRagService implements OnModuleInit, OnModuleDestroy {
       action,
       resourceId,
       timestamp: Date.now(),
-      oldState,
-      newState,
+      oldState: oldState as any,
+      newState: newState as any,
       details,
     });
     if (this.auditLog.length > 10000) {
