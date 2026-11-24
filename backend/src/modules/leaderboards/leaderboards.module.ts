@@ -7,6 +7,8 @@ import { GithubSyncService } from './github-sync.service';
 import { RankingService } from './ranking.service';
 import { CountryNormalizerService } from './country-normalizer.service';
 import { LeaderboardWorker } from './leaderboard.worker';
+import { ZscoreNormalizerService } from './zscore-normalizer.service';
+import { ShardedLeaderboardService } from './sharded-leaderboard.service';
 
 @Module({
   imports: [SecurityModule, QueuesModule],
@@ -17,7 +19,13 @@ import { LeaderboardWorker } from './leaderboard.worker';
     RankingService,
     CountryNormalizerService,
     LeaderboardWorker,
+    ZscoreNormalizerService,
+    ShardedLeaderboardService,
   ],
-  exports: [LeaderboardsService],
+  exports: [
+    LeaderboardsService,
+    ZscoreNormalizerService,
+    ShardedLeaderboardService,
+  ],
 })
 export class LeaderboardsModule {}

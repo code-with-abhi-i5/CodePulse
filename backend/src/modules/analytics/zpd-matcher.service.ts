@@ -33,6 +33,13 @@ export interface ReciprocalMentorshipPair {
   rationale: string;
 }
 
+export interface ZpdCompetencyEvaluation {
+  gap: number;
+  score: number;
+  zoneClassification: ZpdPairMatch['zoneClassification'];
+  guidance: string;
+}
+
 @Injectable()
 export class ZpdMatcherService {
   private readonly logger = new Logger(ZpdMatcherService.name);
@@ -52,7 +59,7 @@ export class ZpdMatcherService {
     menteeScore: number,
     mentorScore: number,
     competency: SkillCompetency,
-  ): ZpdPairMatch['zoneClassification'] & { score: number; guidance: string; gap: number } {
+  ): ZpdCompetencyEvaluation {
     const gap = mentorScore - menteeScore;
 
     if (gap < 5) {
