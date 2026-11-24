@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ChallengesController } from './challenges.controller';
 import { ChallengesService } from './challenges.service';
 import { DifficultyCalibratorService } from './difficulty-calibrator.service';
+import { BountyCalculatorService } from './bounty-calculator.service';
+import { RewardMultiplierService } from './reward-multiplier.service';
 
 import { QueuesModule } from '../queues/queues.module';
 import { ChallengesWorker } from './challenges.worker';
@@ -19,7 +21,15 @@ import { HybridSearchService } from './hybrid-search.service';
     ChallengesScheduler,
     HybridSearchService,
     DifficultyCalibratorService,
+    BountyCalculatorService,
+    RewardMultiplierService,
   ],
-  exports: [ChallengesService, HybridSearchService, DifficultyCalibratorService],
+  exports: [
+    ChallengesService,
+    HybridSearchService,
+    DifficultyCalibratorService,
+    BountyCalculatorService,
+    RewardMultiplierService,
+  ],
 })
 export class ChallengesModule {}

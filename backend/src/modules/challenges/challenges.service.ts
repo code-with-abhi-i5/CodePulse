@@ -116,12 +116,38 @@ export class ChallengesService {
         });
 
         if (isCompleted) {
+          // Calculate active streak multiplier
+          let streakMultiplier = 1.0;
+          try {
+            const devStats = await tx.developerStats.findUnique({
+              where: { userId },
+              select: { streak: true },
+            });
+            const streak = devStats?.streak ?? 0;
+            if (streak >= 30) {
+              streakMultiplier = 1.5;
+            } else if (streak >= 7) {
+              streakMultiplier = 1.25;
+            }
+          } catch {
+            streakMultiplier = 1.0;
+          }
+
+          const awardedXp = Math.round(challenge.xpReward * streakMultiplier);
+          const bonusText =
+            streakMultiplier > 1.0
+              ? ` (${streakMultiplier}x streak multiplier)`
+              : '';
+
           await enqueueNotification(tx, {
             eventKey: `challenge-completed:${userChallenge.id}`,
             userId,
             type: 'CHALLENGE',
-            title: 'Challenge Completed! 🎉',
-            message: `You completed the "${challenge.title}" challenge and earned ${challenge.xpReward} XP.`,
+            title:
+              streakMultiplier > 1.0
+                ? `Challenge Completed! (${streakMultiplier}x Streak Multiplier) 🎉`
+                : 'Challenge Completed! 🎉',
+            message: `You completed the "${challenge.title}" challenge and earned ${awardedXp} XP${bonusText}.`,
           });
 
           await tx.activity.create({
@@ -129,8 +155,12 @@ export class ChallengesService {
               userId,
               type: 'CHALLENGE',
               title: `Completed ${challenge.title}`,
-              description: `Earned ${challenge.xpReward} XP for completing a challenge.`,
-              metadata: { challengeId: challenge.id },
+              description: `Earned ${awardedXp} XP for completing a challenge${bonusText}.`,
+              metadata: {
+                challengeId: challenge.id,
+                streakMultiplier,
+                awardedXp,
+              },
             },
           });
 
@@ -138,9 +168,9 @@ export class ChallengesService {
             await this.xpService.addXp(
               {
                 userId,
-                amount: challenge.xpReward,
+                amount: awardedXp,
                 source: 'CHALLENGE_COMPLETE',
-                reason: `Completed challenge: ${challenge.title}`,
+                reason: `Completed challenge: ${challenge.title}${bonusText}`,
               },
               tx,
             );
@@ -148,8 +178,8 @@ export class ChallengesService {
             await tx.developerRating.updateMany({
               where: { userId },
               data: {
-                gamificationXp: { increment: challenge.xpReward },
-                xp: { increment: challenge.xpReward },
+                gamificationXp: { increment: awardedXp },
+                xp: { increment: awardedXp },
               },
             });
           }
@@ -330,6 +360,56 @@ export class ChallengesService {
 
       if (!existing) {
         const expiresAt = this.calculateExpiration(template.type, now);
+        await this.prisma.challenge.create({
+          data: {
+            ...template,
+            expiresAt,
+          },
+        });
+        createdCount++;
+      }
+    }
+
+    return { createdCount };
+  }
+
+  async generateWeeklyBossChallenges(now = new Date()) {
+    const bossTemplates = [
+      {
+        title: 'Weekly Boss: CodePulse Core Contributor',
+        description: 'Submit and merge 10 pull requests during the competitive NSoC week',
+        type: 'WEEKLY' as ChallengeType,
+        difficulty: Difficulty.HARD,
+        xpReward: 1500,
+        target: 10,
+        category: 'PULL_REQUESTS',
+        icon: 'Crown',
+      },
+      {
+        title: 'Weekly Boss: Arena Grandmaster',
+        description: 'Achieve 5 consecutive victories in live competitive algorithm battles',
+        type: 'WEEKLY' as ChallengeType,
+        difficulty: Difficulty.LEGENDARY,
+        xpReward: 2500,
+        target: 5,
+        category: 'BATTLES',
+        icon: 'Swords',
+      },
+    ];
+
+    let createdCount = 0;
+    // Sets expiration to 7 days from generation time
+    const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    for (const template of bossTemplates) {
+      const existing = await this.prisma.challenge.findFirst({
+        where: {
+          title: template.title,
+          expiresAt: { gt: now },
+        },
+      });
+
+      if (!existing) {
         await this.prisma.challenge.create({
           data: {
             ...template,
