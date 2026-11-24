@@ -35,6 +35,9 @@ describe('Challenges Lifecycle State Machine & Concurrency Engine (#502)', () =>
       activity: {
         create: jest.fn(),
       },
+      developerStats: {
+        findUnique: jest.fn(),
+      },
       $transaction: jest.fn(async (cb) => cb(prisma)),
     };
 
@@ -253,6 +256,133 @@ describe('Challenges Lifecycle State Machine & Concurrency Engine (#502)', () =>
 
       expect(res).toEqual({ expiredUserChallengesCount: 5 });
       expect(service.archiveExpiredChallenges).toHaveBeenCalled();
+    });
+
+    it('executes generate-weekly-boss-challenges job', async () => {
+      const dlq = { capture: jest.fn() } as any;
+      const worker = new ChallengesWorker(service, {} as any, dlq);
+
+      jest.spyOn(service, 'generateWeeklyBossChallenges').mockResolvedValueOnce({
+        createdCount: 2,
+      });
+
+      const res = await worker.process({
+        name: 'generate-weekly-boss-challenges',
+      } as any);
+
+      expect(res).toEqual({ createdCount: 2 });
+      expect(service.generateWeeklyBossChallenges).toHaveBeenCalled();
+    });
+  });
+
+  describe('generateWeeklyBossChallenges & Streak Multipliers (#286)', () => {
+    it('generates 2 weekly boss challenges with 7-day expiration when active', async () => {
+      prisma.challenge.findFirst.mockResolvedValue(null);
+      prisma.challenge.create.mockResolvedValue({ id: 'boss-ch-1' });
+
+      const now = new Date('2026-03-02T00:00:00Z'); // Monday
+      const result = await service.generateWeeklyBossChallenges(now);
+
+      expect(result.createdCount).toBe(2);
+      expect(prisma.challenge.create).toHaveBeenCalledTimes(2);
+
+      const firstCallData = prisma.challenge.create.mock.calls[0][0].data;
+      expect(firstCallData.type).toBe('WEEKLY');
+      expect(firstCallData.expiresAt.getTime()).toBe(
+        new Date('2026-03-09T00:00:00Z').getTime(),
+      );
+    });
+
+    it('applies 1.25x streak multiplier when user streak is >= 7 days', async () => {
+      const challenge = {
+        id: 'ch-streak-1',
+        title: 'PR Boss',
+        target: 2,
+        xpReward: 200,
+        category: 'PR',
+      };
+      prisma.challenge.findMany.mockResolvedValue([challenge]);
+      prisma.userChallenge.findUnique.mockResolvedValue({
+        id: 'uc-1',
+        progress: 1,
+        isCompleted: false,
+        status: ChallengeStatus.IN_PROGRESS,
+      });
+      prisma.userChallenge.update.mockResolvedValue({});
+      prisma.developerStats.findUnique.mockResolvedValue({ streak: 14 }); // 14 days streak
+
+      await service.processUserActivity('user-1', 'PR', 1);
+
+      // 200 XP * 1.25 = 250 XP
+      expect(xpService.addXp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          amount: 250,
+          reason: expect.stringContaining('1.25x streak multiplier'),
+        }),
+        expect.anything(),
+      );
+    });
+
+    it('applies 1.5x streak multiplier when user streak is >= 30 days', async () => {
+      const challenge = {
+        id: 'ch-streak-2',
+        title: 'Master Coder',
+        target: 1,
+        xpReward: 400,
+        category: 'COMMITS',
+      };
+      prisma.challenge.findMany.mockResolvedValue([challenge]);
+      prisma.userChallenge.findUnique.mockResolvedValue({
+        id: 'uc-2',
+        progress: 0,
+        isCompleted: false,
+        status: ChallengeStatus.IN_PROGRESS,
+      });
+      prisma.userChallenge.update.mockResolvedValue({});
+      prisma.developerStats.findUnique.mockResolvedValue({ streak: 45 }); // 45 days streak
+
+      await service.processUserActivity('user-2', 'COMMITS', 1);
+
+      // 400 XP * 1.5 = 600 XP
+      expect(xpService.addXp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-2',
+          amount: 600,
+          reason: expect.stringContaining('1.5x streak multiplier'),
+        }),
+        expect.anything(),
+      );
+    });
+
+    it('applies standard 1.0x XP without multiplier when user streak is < 7 days', async () => {
+      const challenge = {
+        id: 'ch-streak-3',
+        title: 'Novice',
+        target: 1,
+        xpReward: 100,
+        category: 'COMMITS',
+      };
+      prisma.challenge.findMany.mockResolvedValue([challenge]);
+      prisma.userChallenge.findUnique.mockResolvedValue({
+        id: 'uc-3',
+        progress: 0,
+        isCompleted: false,
+        status: ChallengeStatus.IN_PROGRESS,
+      });
+      prisma.userChallenge.update.mockResolvedValue({});
+      prisma.developerStats.findUnique.mockResolvedValue({ streak: 4 }); // 4 days streak
+
+      await service.processUserActivity('user-3', 'COMMITS', 1);
+
+      // 100 XP * 1.0 = 100 XP
+      expect(xpService.addXp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-3',
+          amount: 100,
+        }),
+        expect.anything(),
+      );
     });
   });
 });
