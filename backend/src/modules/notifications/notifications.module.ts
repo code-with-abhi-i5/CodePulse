@@ -4,6 +4,8 @@ import { NotificationsService } from './notifications.service';
 import { DiscordWebhookService } from './discord-webhook.service';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationOutboxService } from './notification-outbox.service';
+import { TemplateCompilerService } from './template-compiler.service';
+import { NotificationBatchDispatcherService } from './notification-batch-dispatcher.service';
 
 @Module({
   imports: [AuthModule],
@@ -12,11 +14,15 @@ import { NotificationOutboxService } from './notification-outbox.service';
     NotificationsService,
     DiscordWebhookService,
     NotificationOutboxService,
+    TemplateCompilerService,
+    NotificationBatchDispatcherService,
   ],
   exports: [
     NotificationsService,
     DiscordWebhookService,
     NotificationOutboxService,
+    TemplateCompilerService,
+    NotificationBatchDispatcherService,
   ],
 })
 export class NotificationsModule {}
