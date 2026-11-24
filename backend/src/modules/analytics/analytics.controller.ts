@@ -10,6 +10,7 @@ import {
   Optional,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { AnalyticsService } from './analytics.service';
@@ -24,6 +25,7 @@ import type {
 } from './scylladb-telemetry.service';
 import { ComplexityService } from './complexity.service';
 import { GreenCarbonEstimatorService } from './green-carbon-estimator.service';
+import { DebtForecasterService } from './debt-forecaster.service';
 import {
   MonteCarloVelocityService,
   type HistoricalSprintDay,
@@ -59,6 +61,7 @@ export class AnalyticsController {
     @Optional() private readonly monteCarloVelocity?: MonteCarloVelocityService,
     @Optional() private readonly architecturalDrift?: ArchitecturalDriftService,
     @Optional() private readonly flowStateService?: FlowStateService,
+    @Optional() private readonly debtForecaster?: DebtForecasterService,
   ) {}
 
   @Get('platform')
@@ -393,5 +396,21 @@ export class AnalyticsController {
   })
   correlateFatigueBugs(@Body() body: { observations: FatigueCommitObservation[] }) {
     return this.flowStateService?.correlateFatigueWithBugRate(body.observations ?? []);
+  }
+
+  // ==========================================
+  // Predictive Technical Debt & Code Maintainability Degradation Forecast Engine (#446)
+  // ==========================================
+
+  @Get('repositories/:id/tech-debt-forecast')
+  @ApiOperation({
+    summary: 'Predictive technical debt and code maintainability degradation forecast engine (#446)',
+  })
+  @ApiParam({ name: 'id', description: 'Repository ID' })
+  async getRepositoryTechDebtForecast(@Param('id') repositoryId: string) {
+    if (!this.debtForecaster) {
+      throw new BadRequestException('DebtForecasterService is unavailable');
+    }
+    return this.debtForecaster.getTechDebtForecast(repositoryId);
   }
 }
