@@ -47,29 +47,62 @@ jobs:
                 labelsToAdd.push('nsoc26');
               }
 
+              // Remove duplicate level2 if level3 is already present
+              if (currentLabels.includes('level3') && currentLabels.includes('level2')) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: pr.number,
+                    name: 'level2'
+                  });
+                  console.log(`Removed duplicate 'level2' from PR #${pr.number}`);
+                } catch (err) {
+                  console.warn(`Could not remove level2 from PR #${pr.number}:`, err.message);
+                }
+              }
+
               // Check if any level label already exists
               const hasLevel = currentLabels.some(l => ['level1', 'level2', 'level3'].includes(l));
               if (!hasLevel) {
-                const title = (pr.title + ' ' + (pr.head ? pr.head.ref : '')).toLowerCase();
-                
-                // Intelligently classify past PRs based on title / branch
-                if (title.includes('doc') || title.includes('readme') || title.includes('typo')) {
-                  labelsToAdd.push('level1');
-                } else if (
-                  title.includes('challenge') || 
-                  title.includes('maintenance') || 
-                  title.includes('settings') || 
-                  title.includes('topbar') || 
-                  title.includes('sidebar') || 
-                  title.includes('contrast') || 
-                  title.includes('avatar') || 
-                  title.includes('ui') ||
-                  title.includes('skeleton')
-                ) {
-                  labelsToAdd.push('level2');
+                const body = pr.body || '';
+                const match = body.match(/(?:closes|fixes|resolves)\s*#(\d+)/i) || pr.title.match(/\(#(\d+)\)/);
+                let detectedLevel = null;
+
+                if (match) {
+                  try {
+                    const linked = await github.rest.issues.get({
+                      owner,
+                      repo,
+                      issue_number: parseInt(match[1])
+                    });
+                    const issueLabels = linked.data.labels.map(l => (typeof l === 'string' ? l : l.name).toLowerCase());
+                    if (issueLabels.includes('level3')) detectedLevel = 'level3';
+                    else if (issueLabels.includes('level2')) detectedLevel = 'level2';
+                    else if (issueLabels.includes('level1')) detectedLevel = 'level1';
+                  } catch (e) {}
+                }
+
+                if (detectedLevel) {
+                  labelsToAdd.push(detectedLevel);
                 } else {
-                  // Default frontend/UI enhancement
-                  labelsToAdd.push('level2');
+                  const title = (pr.title + ' ' + (pr.head ? pr.head.ref : '')).toLowerCase();
+                  if (title.includes('doc') || title.includes('readme') || title.includes('typo')) {
+                    labelsToAdd.push('level1');
+                  } else if (
+                    title.includes('level3') ||
+                    title.includes('raft') ||
+                    title.includes('consensus') ||
+                    title.includes('ebpf') ||
+                    title.includes('quic') ||
+                    title.includes('ai-') ||
+                    title.includes('sec-') ||
+                    title.includes('net-')
+                  ) {
+                    labelsToAdd.push('level3');
+                  } else {
+                    labelsToAdd.push('level2');
+                  }
                 }
               }
 
