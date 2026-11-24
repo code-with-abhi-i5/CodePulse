@@ -37,12 +37,12 @@ export class LogCompactorService {
   private totalTombstones = 0;
   private totalReclaimedBytes = 0;
 
+  private readonly tombstoneCleaner: TombstoneCleanerService;
+
   constructor(
-    @Optional() private readonly tombstoneCleaner?: TombstoneCleanerService
+    @Optional() tombstoneCleaner?: TombstoneCleanerService
   ) {
-    if (!this.tombstoneCleaner) {
-      this.tombstoneCleaner = new TombstoneCleanerService();
-    }
+    this.tombstoneCleaner = tombstoneCleaner || new TombstoneCleanerService();
   }
 
   /**
