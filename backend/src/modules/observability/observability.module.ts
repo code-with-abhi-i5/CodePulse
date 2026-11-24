@@ -4,10 +4,10 @@ import { EbpfMetricsService } from './ebpf-metrics.service';
 import { EbpfTracerService } from './ebpf-tracer.service';
 import { EbpfController } from './ebpf.controller';
 import { GoldenSignalsForecasterService } from './golden-signals-forecaster.service';
-import { OtelInitializerService } from './otel-initializer.service';
-import { DistributedTracingService } from './distributed-tracing.service';
-import { EbpfProfilerService } from './ebpf-profiler.service';
-import { FlamegraphGeneratorService } from './flamegraph-generator.service';
+import { TraceInjectorService } from './trace-injector.service';
+import { EventTracingPropagatorService } from './event-tracing-propagator.service';
+import { HeapProfilerService } from './heap-profiler.service';
+import { MemoryLeakDetectorService } from './memory-leak-detector.service';
 
 @Module({
   controllers: [EbpfController],
@@ -16,20 +16,20 @@ import { FlamegraphGeneratorService } from './flamegraph-generator.service';
     EbpfMetricsService,
     EbpfTracerService,
     GoldenSignalsForecasterService,
-    OtelInitializerService,
-    DistributedTracingService,
-    EbpfProfilerService,
-    FlamegraphGeneratorService,
+    TraceInjectorService,
+    EventTracingPropagatorService,
+    HeapProfilerService,
+    MemoryLeakDetectorService,
   ],
   exports: [
     EbpfMonitorService,
     EbpfMetricsService,
     EbpfTracerService,
     GoldenSignalsForecasterService,
-    OtelInitializerService,
-    DistributedTracingService,
-    EbpfProfilerService,
-    FlamegraphGeneratorService,
+    TraceInjectorService,
+    EventTracingPropagatorService,
+    HeapProfilerService,
+    MemoryLeakDetectorService,
   ],
 })
 export class ObservabilityModule {}

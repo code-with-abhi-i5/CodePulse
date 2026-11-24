@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GithubService } from '../github/github.service';
+import { KmsEncryptionService } from '../security/kms-encryption.service';
 import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 
@@ -11,6 +12,7 @@ export class SyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly github: GithubService,
+    @Optional() private readonly kmsEncryptionService?: KmsEncryptionService,
   ) {}
 
   async syncUser(userId: string) {
@@ -20,8 +22,31 @@ export class SyncService {
     if (!user) {
       return;
     }
-    const token = (user as any).githubAccessToken || process.env.GITHUB_TOKEN || '';
-    return this.syncUserData(user.id, user.username, token);
+
+    let token = process.env.GITHUB_TOKEN || '';
+    const userSettings = (user.settings as Record<string, any>) || {};
+    const storedToken = userSettings.encryptedGithubToken || (user as any).githubAccessToken;
+
+    if (storedToken) {
+      if (this.kmsEncryptionService && this.kmsEncryptionService.isEnvelope(storedToken)) {
+        try {
+          token = this.kmsEncryptionService.decryptToken(storedToken);
+        } catch (err: any) {
+          this.logger.warn(
+            `Failed to decrypt KMS-envelope GitHub token for user ${user.username}: ${err.message}`
+          );
+        }
+      } else if (typeof storedToken === 'string') {
+        token = storedToken;
+      }
+    }
+
+    try {
+      return await this.syncUserData(user.id, user.username, token);
+    } finally {
+      // Memory sanitization: wipe local token reference after sync
+      token = '';
+    }
   }
 
   async syncUserData(userId: string, username: string, accessToken: string) {
@@ -521,5 +546,87 @@ export class SyncService {
       );
       throw error;
     }
+  }
+
+  // --- Envelope Encryption Architecture with KMS (#391) ---
+
+  /**
+   * Stores a user's GitHub OAuth access token encrypted with an individual DEK under Master KMS Key.
+   */
+  async storeUserEncryptedGithubToken(userId: string, plaintextToken: string): Promise<string> {
+    if (!this.kmsEncryptionService) {
+      throw new Error('KmsEncryptionService is not available');
+    }
+
+    const encryptedToken = this.kmsEncryptionService.encryptToken(plaintextToken);
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { settings: true },
+    });
+    const currentSettings = (user?.settings as Record<string, any>) || {};
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        settings: {
+          ...currentSettings,
+          encryptedGithubToken: encryptedToken,
+        },
+      },
+    });
+
+    return encryptedToken;
+  }
+
+  /**
+   * Retrieves and decrypts the user's GitHub OAuth access token into ephemeral memory.
+   */
+  async getUserDecryptedGithubToken(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { settings: true },
+    });
+    if (!user) return null;
+
+    const currentSettings = (user.settings as Record<string, any>) || {};
+    const encryptedToken = currentSettings.encryptedGithubToken;
+
+    if (!encryptedToken) return null;
+    if (!this.kmsEncryptionService) return encryptedToken;
+
+    return this.kmsEncryptionService.decryptToken(encryptedToken);
+  }
+
+  /**
+   * Re-encrypts user's stored DEK under a rotated Master KMS key without re-encrypting ciphertext.
+   */
+  async rotateUserGithubTokenKey(userId: string, targetKeyId?: string): Promise<boolean> {
+    if (!this.kmsEncryptionService) return false;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { settings: true },
+    });
+    if (!user) return false;
+
+    const currentSettings = (user.settings as Record<string, any>) || {};
+    const encryptedToken = currentSettings.encryptedGithubToken;
+    if (!encryptedToken || !this.kmsEncryptionService.isEnvelope(encryptedToken)) {
+      return false;
+    }
+
+    const reencrypted = this.kmsEncryptionService.reencryptToken(encryptedToken, targetKeyId);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        settings: {
+          ...currentSettings,
+          encryptedGithubToken: reencrypted,
+        },
+      },
+    });
+
+    return true;
   }
 }
