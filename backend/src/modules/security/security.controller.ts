@@ -18,6 +18,10 @@ import {
   type VulnerabilityLifecycleRecord,
 } from './security-mttr.service';
 import { MpcVaultService } from './mpc-vault.service';
+import {
+  PatchSynthesizerService,
+  type VulnerabilityAdvisory,
+} from './patch-synthesizer.service';
 import type {
   CreateVaultSecretDto,
   ReconstructVaultSecretDto,
@@ -38,6 +42,7 @@ export class SecurityController {
     private readonly typosquatScannerService: TyposquatScannerService,
     private readonly mpcVaultService: MpcVaultService,
     @Optional() private readonly securityMttrService?: SecurityMttrService,
+    @Optional() private readonly patchSynthesizerService?: PatchSynthesizerService,
   ) {}
 
   @Post('scan-dependencies')
@@ -217,5 +222,74 @@ export class SecurityController {
       res.send(pdfBuffer);
     }
     return pdfBuffer;
+  }
+
+  // ==========================================
+  // Zero-Day Security Patch Synthesizer (#528)
+  // ==========================================
+
+  @Post('patches/scan')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Scan project dependencies against OSV.dev and GitHub Advisory Database (#528)',
+  })
+  async scanDependenciesForAdvisories(
+    @Body()
+    dto: {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    },
+  ) {
+    if (!this.patchSynthesizerService) {
+      return { scannedCount: 0, vulnerabilitiesDetected: [], criticalCount: 0, highCount: 0, requiresPatchCount: 0 };
+    }
+    return this.patchSynthesizerService.scanDependencies(dto);
+  }
+
+  @Post('patches/synthesize')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Synthesize automated backward-compatible security patch with shims & test verification (#528)',
+  })
+  async synthesizeSecurityPatch(
+    @Body() advisory: VulnerabilityAdvisory,
+  ) {
+    if (!this.patchSynthesizerService) {
+      throw new Error('PatchSynthesizerService unavailable');
+    }
+    return this.patchSynthesizerService.synthesizeSecurityPatch(advisory);
+  }
+
+  @Post('patches/create-pr')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Create automated pull request with code shims for zero-day patch (#528)',
+  })
+  async createPatchPullRequest(
+    @Body('cveId') cveId: string,
+  ) {
+    if (!this.patchSynthesizerService) {
+      throw new Error('PatchSynthesizerService unavailable');
+    }
+    return this.patchSynthesizerService.createPullRequest(cveId);
+  }
+
+  @Get('patches')
+  @ApiOperation({
+    summary: 'List all synthesized zero-day security patches and PR statuses (#528)',
+  })
+  async listSynthesizedPatches() {
+    if (!this.patchSynthesizerService) return [];
+    return this.patchSynthesizerService.listPatches();
+  }
+
+  @Get('patches/:cveId')
+  @ApiOperation({
+    summary: 'Get synthesized security patch details for a specific CVE (#528)',
+  })
+  async getPatchByCve(@Param('cveId') cveId: string) {
+    if (!this.patchSynthesizerService) return null;
+    const patches = await this.patchSynthesizerService.listPatches();
+    return patches.find((p) => p.cveId.toLowerCase() === cveId.toLowerCase()) || null;
   }
 }

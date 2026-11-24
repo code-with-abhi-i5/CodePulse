@@ -74,6 +74,10 @@ function fixture() {
     },
   };
   const prisma: any = {
+    user: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
     $transaction: jest.fn(async (callback: any) => {
       const before = structuredClone(state);
       try {
@@ -264,5 +268,91 @@ describe('differential GitHub sync', () => {
     await expect(
       f.service.syncUserData('u1', 'owner', 'token'),
     ).rejects.toThrow('Incomplete');
+  });
+
+  describe('Envelope Encryption Architecture with KMS (#391)', () => {
+    it('decrypts stored envelope token and passes plaintext token to syncUserData', async () => {
+      const f = fixture();
+      const mockKms = {
+        isEnvelope: jest.fn().mockReturnValue(true),
+        decryptToken: jest.fn().mockReturnValue('gho_decrypted_kms_secret_token_123'),
+        encryptToken: jest.fn().mockReturnValue('enc:v1:mock_encrypted_envelope_payload'),
+        reencryptToken: jest.fn().mockReturnValue('enc:v1:mock_rotated_envelope_payload'),
+      };
+
+      const syncWithKms = new SyncService(f.prisma, f.github, mockKms as any);
+      f.prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'u-kms-1',
+        username: 'kms-developer',
+        settings: {
+          encryptedGithubToken: 'enc:v1:mock_encrypted_envelope_payload',
+        },
+      });
+
+      const syncUserDataSpy = jest.spyOn(syncWithKms, 'syncUserData').mockResolvedValueOnce(undefined as any);
+
+      await syncWithKms.syncUser('u-kms-1');
+
+      expect(mockKms.decryptToken).toHaveBeenCalledWith('enc:v1:mock_encrypted_envelope_payload');
+      expect(syncUserDataSpy).toHaveBeenCalledWith('u-kms-1', 'kms-developer', 'gho_decrypted_kms_secret_token_123');
+    });
+
+    it('stores user encrypted GitHub token with fresh KMS DEK', async () => {
+      const f = fixture();
+      const mockKms = {
+        encryptToken: jest.fn().mockReturnValue('enc:v1:encrypted_token_stored'),
+      };
+      const syncWithKms = new SyncService(f.prisma, f.github, mockKms as any);
+
+      f.prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'u-store-1',
+        settings: { theme: 'dark' },
+      });
+
+      const encrypted = await syncWithKms.storeUserEncryptedGithubToken('u-store-1', 'ghp_raw_secret_token');
+      expect(encrypted).toBe('enc:v1:encrypted_token_stored');
+      expect(mockKms.encryptToken).toHaveBeenCalledWith('ghp_raw_secret_token');
+      expect(f.prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'u-store-1' },
+          data: expect.objectContaining({
+            settings: {
+              theme: 'dark',
+              encryptedGithubToken: 'enc:v1:encrypted_token_stored',
+            },
+          }),
+        })
+      );
+    });
+
+    it('rotates user stored DEK under new Master KMS Key without changing data ciphertext', async () => {
+      const f = fixture();
+      const mockKms = {
+        isEnvelope: jest.fn().mockReturnValue(true),
+        reencryptToken: jest.fn().mockReturnValue('enc:v1:rotated_dek_token_2027'),
+      };
+      const syncWithKms = new SyncService(f.prisma, f.github, mockKms as any);
+
+      f.prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'u-rot-1',
+        settings: {
+          encryptedGithubToken: 'enc:v1:old_dek_token_2026',
+        },
+      });
+
+      const rotated = await syncWithKms.rotateUserGithubTokenKey('u-rot-1', 'new-kms-key-2027');
+      expect(rotated).toBe(true);
+      expect(mockKms.reencryptToken).toHaveBeenCalledWith('enc:v1:old_dek_token_2026', 'new-kms-key-2027');
+      expect(f.prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'u-rot-1' },
+          data: expect.objectContaining({
+            settings: {
+              encryptedGithubToken: 'enc:v1:rotated_dek_token_2027',
+            },
+          }),
+        })
+      );
+    });
   });
 });
