@@ -15,6 +15,12 @@ export class ChallengesScheduler {
     await this.challengesQueue.add('generate-daily-challenges', {});
   }
 
+  @Cron('0 0 * * 1')
+  async scheduleWeeklyBossChallenges() {
+    this.logger.log('Scheduling weekly boss challenges generation...');
+    await this.challengesQueue.add('generate-weekly-boss-challenges', {});
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async scheduleDifficultyCalibration() {
     this.logger.log('Scheduling nightly problem difficulty calibration...');
