@@ -7,6 +7,8 @@ import { MetricsBasicAuthGuard } from './metrics-basic-auth.guard';
 import { MetricsController } from './metrics.controller';
 import { MetricsService } from './metrics.service';
 import { RedisStreamsModule } from '../../common/redis/redis-streams.module';
+import { HighCardinalityIndexerService } from './high-cardinality-indexer.service';
+import { MetricCompactorService } from './metric-compactor.service';
 
 @Module({
   imports: [PrismaModule, QueuesModule, RedisStreamsModule],
@@ -14,8 +16,10 @@ import { RedisStreamsModule } from '../../common/redis/redis-streams.module';
   providers: [
     MetricsService,
     MetricsBasicAuthGuard,
+    HighCardinalityIndexerService,
+    MetricCompactorService,
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
   ],
-  exports: [MetricsService],
+  exports: [MetricsService, HighCardinalityIndexerService, MetricCompactorService],
 })
 export class MetricsModule {}
