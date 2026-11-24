@@ -440,4 +440,47 @@ describe('AuthService', () => {
       );
     });
   });
+
+  describe('Envelope Encryption Architecture with KMS (#391)', () => {
+    let mockKms: any;
+    let authServiceWithKms: AuthService;
+
+    beforeEach(() => {
+      mockKms = {
+        encryptToken: jest.fn().mockReturnValue('enc:v1:mock_encrypted_oauth_token'),
+        decryptToken: jest.fn().mockReturnValue('gho_plain_token_12345'),
+        reencryptToken: jest.fn().mockReturnValue('enc:v1:mock_reencrypted_oauth_token'),
+      };
+
+      authServiceWithKms = new AuthService(
+        prismaMock as any,
+        configMock as any,
+        jwtMock as any,
+        syncMock as any,
+        blacklistService,
+        undefined,
+        undefined,
+        undefined,
+        mockKms,
+      );
+    });
+
+    it('encrypts GitHub OAuth tokens via KmsEncryptionService', () => {
+      const encrypted = authServiceWithKms.encryptGithubToken('gho_plain_token_12345');
+      expect(encrypted).toBe('enc:v1:mock_encrypted_oauth_token');
+      expect(mockKms.encryptToken).toHaveBeenCalledWith('gho_plain_token_12345', undefined);
+    });
+
+    it('decrypts stored envelope GitHub token via KmsEncryptionService', () => {
+      const decrypted = authServiceWithKms.decryptGithubToken('enc:v1:mock_encrypted_oauth_token');
+      expect(decrypted).toBe('gho_plain_token_12345');
+      expect(mockKms.decryptToken).toHaveBeenCalledWith('enc:v1:mock_encrypted_oauth_token');
+    });
+
+    it('re-encrypts stored token under a rotated Master KMS Key', () => {
+      const rotated = authServiceWithKms.reencryptGithubToken('enc:v1:mock_encrypted_oauth_token', 'kms-key-2027');
+      expect(rotated).toBe('enc:v1:mock_reencrypted_oauth_token');
+      expect(mockKms.reencryptToken).toHaveBeenCalledWith('enc:v1:mock_encrypted_oauth_token', 'kms-key-2027');
+    });
+  });
 });
