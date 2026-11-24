@@ -15,11 +15,13 @@ import { MetricsModule } from '../metrics/metrics.module';
 import { XpModule } from '../xp/xp.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { ReplayStreamService } from './replay-stream.service';
+import { ReplayEngineService } from './replay-engine.service';
 import { CryptoModule } from '../crypto/crypto.module';
 import { WatermarkService } from './watermark.service';
 import { HypeMeterService } from './hype-meter.service';
 import { HypeStormGateway } from './hype-storm.gateway';
 import { RedisService } from '../../common/redis/redis.service';
+import { RedlockService } from '../../common/redis/redlock.service';
 import { TournamentEngineService } from './tournament-engine.service';
 import { EsportsModule } from '../esports/esports.module';
 import { AiModule } from '../ai/ai.module';
@@ -78,6 +80,7 @@ import { TrueSkill2Service } from './trueskill2.service';
     BattlesLifecycleScheduler,
     BattlesLifecycleWorker,
     ReplayStreamService,
+    ReplayEngineService,
     WatermarkService,
     HypeMeterService,
     HypeStormGateway,
@@ -109,12 +112,14 @@ import { TrueSkill2Service } from './trueskill2.service';
     TeamMatchmakingService,
 
     TrueSkill2Service,
+    RedlockService,
   ],
   exports: [
     BattlesService,
     JitterBufferService,
     BattlesGateway,
     ReplayStreamService,
+    ReplayEngineService,
     WatermarkService,
     HypeMeterService,
     HypeStormGateway,
@@ -146,6 +151,7 @@ import { TrueSkill2Service } from './trueskill2.service';
     TeamMatchmakingService,
 
     TrueSkill2Service,
+    RedlockService,
   ],
 })
 export class BattlesModule {}

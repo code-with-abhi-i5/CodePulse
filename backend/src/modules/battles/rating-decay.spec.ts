@@ -152,4 +152,23 @@ describe('competitive rating decay', () => {
     );
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+
+  describe('Anti-Smurf Placement Calibration for Returning Players', () => {
+    it('accelerates MMR gains for decayed veteran players to avoid smurfing low tiers', () => {
+      const { service } = fixture([]);
+      const calibration = service.calibrateReturningPlayerPlacement('veteran-1', 1550, 2100, 25);
+      expect(calibration.antiSmurfAction).toBe('ACCELERATED_RETURN');
+      expect(calibration.provisionalMultiplier).toBeGreaterThanOrEqual(2.0);
+      expect(calibration.calibratedEloGain).toBeGreaterThan(50);
+      expect(calibration.reason).toContain('Returning veteran deficit');
+    });
+
+    it('retains standard gain when player is near their skill bracket', () => {
+      const { service } = fixture([]);
+      const calibration = service.calibrateReturningPlayerPlacement('regular-1', 1800, 1900, 25);
+      expect(calibration.antiSmurfAction).toBe('STANDARD');
+      expect(calibration.provisionalMultiplier).toBe(1.0);
+      expect(calibration.calibratedEloGain).toBe(25);
+    });
+  });
 });

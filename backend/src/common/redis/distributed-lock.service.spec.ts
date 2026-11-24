@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DistributedLockService, RedlockLease } from './distributed-lock.service';
 
 describe('DistributedLockService (Multi-Instance Redlock & Fencing Tokens #1286)', () => {

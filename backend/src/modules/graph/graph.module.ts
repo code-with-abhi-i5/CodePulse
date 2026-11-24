@@ -3,6 +3,8 @@ import { BullModule } from '@nestjs/bullmq';
 import { DeveloperGraphService } from './developer-graph.service';
 import { GraphController } from './graph.controller';
 import { GraphSyncWorker } from './graph-sync.worker';
+import { BetweennessCalculatorService } from './betweenness-calculator.service';
+import { NetworkCentralityService } from './network-centrality.service';
 
 @Module({
   imports: [
@@ -11,7 +13,16 @@ import { GraphSyncWorker } from './graph-sync.worker';
     }),
   ],
   controllers: [GraphController],
-  providers: [DeveloperGraphService, GraphSyncWorker],
-  exports: [DeveloperGraphService],
+  providers: [
+    DeveloperGraphService,
+    GraphSyncWorker,
+    BetweennessCalculatorService,
+    NetworkCentralityService,
+  ],
+  exports: [
+    DeveloperGraphService,
+    BetweennessCalculatorService,
+    NetworkCentralityService,
+  ],
 })
 export class GraphModule {}
