@@ -4,6 +4,8 @@ import { TournamentService } from './tournament.service';
 import { DistributedTransactionCoordinator } from './distributed-transaction.service';
 import { LeaderElectionService } from './leader-election.service';
 import { LeaderElectionController } from './leader-election.controller';
+import { SwissPairingService } from './swiss-pairing.service';
+import { TournamentBracketService } from './tournament-bracket.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
@@ -13,11 +15,15 @@ import { PrismaModule } from '../../prisma/prisma.module';
     TournamentService,
     DistributedTransactionCoordinator,
     LeaderElectionService,
+    SwissPairingService,
+    TournamentBracketService,
   ],
   exports: [
     TournamentService,
     DistributedTransactionCoordinator,
     LeaderElectionService,
+    SwissPairingService,
+    TournamentBracketService,
   ],
 })
 export class TournamentsModule {}
