@@ -24,6 +24,12 @@ import { ReplicaRouter } from './db/replica-router';
 import { FeatureFlagService } from './features/feature-flag.service';
 import { LoadShedderService } from './resilience/load-shedder.service';
 import { DistributedDeadlockDetectorService } from './concurrency/deadlock-detector.service';
+import { LogRateControllerService } from './logger/log-rate-controller.service';
+import { AdaptiveLogSamplerService } from './logger/adaptive-log-sampler.service';
+import { RingBufferWriterService } from './logger/ring-buffer-writer.service';
+import { ZeroAllocationLogger } from './logger/zero-allocation-logger';
+import { PiiMaskerService } from './logger/pii-masker.service';
+import { PayloadAuditLoggerService } from './logger/payload-audit-logger.service';
 
 import { CloudEventsProvider } from './events/cloudevents.provider';
 import { NatsJetStreamService } from './events/nats-jetstream.service';
@@ -60,6 +66,12 @@ import { ClocksModule } from './clocks/clocks.module';
     FeatureFlagService,
     LoadShedderService,
     DistributedDeadlockDetectorService,
+    LogRateControllerService,
+    AdaptiveLogSamplerService,
+    RingBufferWriterService,
+    ZeroAllocationLogger,
+    PiiMaskerService,
+    PayloadAuditLoggerService,
 
     CloudEventsProvider,
     NatsJetStreamService,
@@ -85,6 +97,12 @@ import { ClocksModule } from './clocks/clocks.module';
     FeatureFlagService,
     LoadShedderService,
     DistributedDeadlockDetectorService,
+    LogRateControllerService,
+    AdaptiveLogSamplerService,
+    RingBufferWriterService,
+    ZeroAllocationLogger,
+    PiiMaskerService,
+    PayloadAuditLoggerService,
 
     CloudEventsProvider,
     NatsJetStreamService,
