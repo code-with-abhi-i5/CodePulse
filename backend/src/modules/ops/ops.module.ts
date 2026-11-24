@@ -10,6 +10,12 @@ import { DataArchiverService } from './data-archiver.service';
 import { ShardRebalancerService } from './shard-rebalancer.service';
 import { IndexAdvisorService } from './index-advisor.service';
 import { CostAttributionService } from './cost-attribution.service';
+import { SavingsLedgerService } from './savings-ledger.service';
+import { FinOpsReaperService } from './finops-reaper.service';
+import { CloudflareDnsControllerService } from './cloudflare-dns-controller.service';
+import { GeoDnsFailoverService } from './geo-dns-failover.service';
+import { DynamicConfigReloaderService } from './dynamic-config-reloader.service';
+import { EtcdWatcherService } from './etcd-watcher.service';
 import { AcmeClientService } from './acme-client.service';
 import { SslCertWatchtowerService } from './ssl-cert-watchtower.service';
 
@@ -26,6 +32,12 @@ import { SslCertWatchtowerService } from './ssl-cert-watchtower.service';
     ShardRebalancerService,
     IndexAdvisorService,
     CostAttributionService,
+    SavingsLedgerService,
+    FinOpsReaperService,
+    CloudflareDnsControllerService,
+    GeoDnsFailoverService,
+    DynamicConfigReloaderService,
+    EtcdWatcherService,
     AcmeClientService,
     SslCertWatchtowerService,
   ],
@@ -40,6 +52,12 @@ import { SslCertWatchtowerService } from './ssl-cert-watchtower.service';
     ShardRebalancerService,
     IndexAdvisorService,
     CostAttributionService,
+    SavingsLedgerService,
+    FinOpsReaperService,
+    CloudflareDnsControllerService,
+    GeoDnsFailoverService,
+    DynamicConfigReloaderService,
+    EtcdWatcherService,
     AcmeClientService,
     SslCertWatchtowerService,
   ],
