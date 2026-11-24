@@ -24,12 +24,12 @@ export class CacheWarmingSubscriberService {
   private totalWarmed = 0;
   private totalDurationSum = 0;
 
+  private readonly preloader: CachePreloaderService;
+
   constructor(
-    @Optional() private readonly preloader?: CachePreloaderService
+    @Optional() preloader?: CachePreloaderService
   ) {
-    if (!this.preloader) {
-      this.preloader = new CachePreloaderService();
-    }
+    this.preloader = preloader || new CachePreloaderService();
   }
 
   /**

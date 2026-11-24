@@ -28,6 +28,12 @@ export class ChallengesWorker extends WorkerHost {
     if (job.name === 'generate-daily-challenges') {
       await this.challengesService.generateDailyChallenges();
       this.logger.log('Daily challenges generated successfully via worker.');
+    } else if (job.name === 'generate-weekly-boss-challenges') {
+      const result = await this.challengesService.generateWeeklyBossChallenges();
+      this.logger.log(
+        `Weekly boss challenges generated successfully via worker. Created ${result.createdCount} challenges.`,
+      );
+      return result;
     } else if (job.name === 'cleanup-expired-challenges') {
       const result = await this.challengesService.archiveExpiredChallenges();
       this.logger.log(
