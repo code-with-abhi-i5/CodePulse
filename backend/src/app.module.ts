@@ -26,6 +26,7 @@ import { MetricsModule } from './modules/metrics/metrics.module';
 import { DynamicConfigModule } from './config/dynamic-config.module';
 import { RepositoriesModule } from './modules/repositories/repositories.module';
 import { SecurityModule } from './modules/security/security.module';
+import { SecModule } from './modules/sec/sec.module';
 import { HealthModule } from './modules/health/health.module';
 import { ExecutionModule } from './modules/execution/execution.module';
 import { CloudModule } from './modules/cloud/cloud.module';
@@ -139,6 +140,7 @@ import { VaultModule } from './common/vault/vault.module';
     DynamicConfigModule,
     RepositoriesModule,
     SecurityModule,
+    SecModule,
     HealthModule,
     ExecutionModule,
     CloudModule,
