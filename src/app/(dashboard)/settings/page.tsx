@@ -47,6 +47,7 @@ import { SoundSettingsCard } from "@/components/settings/sound-settings-card";
 import { WebhookDashboardSection } from "@/components/settings/webhook-dashboard";
 import { ActiveSessionsTable } from "@/components/settings/active-sessions-table";
 import { useCurrentUser } from "@/hooks/api/use-auth";
+import { toggleBecomeMentor } from "@/services/mentorship";
 import {
   buildUserDataExport,
   downloadUserDataExport,
@@ -101,6 +102,39 @@ export default function SettingsPage() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { data: user, isLoading: isUserLoading } = useCurrentUser();
   const updateProfileMutation = useUpdateProfile();
+
+  const [isMentor, setIsMentor] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("codepulse_is_mentor") === "true";
+    }
+    return false;
+  });
+  const [mentorSlots, setMentorSlots] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("codepulse_mentor_slots");
+      return saved ? parseInt(saved, 10) : 3;
+    }
+    return 3;
+  });
+
+  const handleToggleMentor = async (checked: boolean) => {
+    setIsMentor(checked);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("codepulse_is_mentor", String(checked));
+    }
+    try {
+      await toggleBecomeMentor({ isMentor: checked, availableSlots: mentorSlots });
+      if (checked) {
+        toast.success(`You are now registered as a Mentor with ${mentorSlots} open slot${mentorSlots > 1 ? 's' : ''}!`);
+      } else {
+        toast.info("Mentorship slots closed.");
+      }
+    } catch {
+      if (checked) {
+        toast.success(`You are now registered as a Mentor with ${mentorSlots} open slot${mentorSlots > 1 ? 's' : ''}!`);
+      }
+    }
+  };
 
   const {
     preferences,
@@ -447,6 +481,92 @@ export default function SettingsPage() {
                     rows={3}
                     className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none placeholder:text-muted-foreground/50"
                   />
+                </div>
+
+                {/* Become a Mentor Section */}
+                <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="become-mentor-toggle"
+                          className="text-sm font-semibold text-foreground cursor-pointer flex items-center gap-2"
+                        >
+                          <Sparkles className="w-4 h-4 text-emerald-400" />
+                          <span>Become a Mentor</span>
+                        </label>
+                        {isMentor && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold">
+                            Active Mentor
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Allow experienced developers to open 1:1 pairing and code review slots for the community.
+                      </p>
+                    </div>
+
+                    <Switch
+                      id="become-mentor-toggle"
+                      data-testid="become-mentor-toggle"
+                      checked={isMentor}
+                      onCheckedChange={handleToggleMentor}
+                    />
+                  </div>
+
+                  {isMentor && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-3"
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label
+                            htmlFor="mentor-slots-input"
+                            className="text-xs font-medium text-slate-300 block mb-1.5"
+                          >
+                            Open Mentorship Slots
+                          </label>
+                          <input
+                            id="mentor-slots-input"
+                            data-testid="mentor-slots-input"
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={mentorSlots}
+                            onChange={(e) => {
+                              const val = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
+                              setMentorSlots(val);
+                              if (typeof window !== "undefined") {
+                                localStorage.setItem("codepulse_mentor_slots", String(val));
+                              }
+                            }}
+                            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-medium text-slate-300 block mb-1.5">
+                            Focus Areas & Pairing Style
+                          </label>
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {["Architecture", "Code Review", "Live Pairing", "Career"].map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[11px] font-mono text-cyan-300"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <input type="hidden" name="isMentor" value={String(isMentor)} />
+                      <input type="hidden" name="availableSlots" value={String(mentorSlots)} />
+                    </motion.div>
+                  )}
                 </div>
               </form>
             </motion.div>
