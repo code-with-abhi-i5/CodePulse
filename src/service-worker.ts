@@ -7,13 +7,27 @@ const PRECACHE_URLS = [
   '/',
   '/manifest.json',
   '/favicon.ico',
+  '/favicon-dark.svg',
+  '/favicon-light.svg',
 ];
 
-// Install Event: Precache static assets
+// Install Event: Precache static assets with resilient fallback
 self.addEventListener('install', (event: ExtendableEvent) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      try {
+        await cache.addAll(PRECACHE_URLS);
+      } catch {
+        // Resilient fallback: cache available assets so a single missing resource does not abort installation
+        await Promise.allSettled(
+          PRECACHE_URLS.map(async (url) => {
+            const response = await fetch(url);
+            if (response.ok) {
+              await cache.put(url, response);
+            }
+          }),
+        );
+      }
     }).then(() => {
       return self.skipWaiting();
     }),

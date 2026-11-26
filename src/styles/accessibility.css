@@ -1,0 +1,68 @@
+/* WCAG 2.2 AAA High-Contrast & Neurodivergent Accessibility Styles */
+
+:root {
+  --cp-bg-primary: #09090b;
+  --cp-fg-primary: #ffffff;
+  --cp-accent-primary: #7dd3fc;
+  --cp-font-sans: "Atkinson Hyperlegible", system-ui, -apple-system, sans-serif;
+  --cp-font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --cp-letter-spacing: 0.01em;
+  --cp-line-height: 1.6;
+}
+
+[data-accessible-mode="high-contrast-cyberpunk"] {
+  --cp-bg-primary: #050508;
+  --cp-fg-primary: #ffffff;
+  --cp-accent-primary: #fde047;
+  background-color: var(--cp-bg-primary);
+  color: var(--cp-fg-primary);
+}
+
+[data-accessible-mode="colorblind-deuteranopia-protanopia"] {
+  --cp-bg-primary: #0a0c14;
+  --cp-fg-primary: #ffffff;
+  --cp-accent-primary: #38bdf8;
+  background-color: var(--cp-bg-primary);
+  color: var(--cp-fg-primary);
+}
+
+[data-accessible-mode="colorblind-tritanopia"] {
+  --cp-bg-primary: #0b0910;
+  --cp-fg-primary: #ffffff;
+  --cp-accent-primary: #fb7185;
+  background-color: var(--cp-bg-primary);
+  color: var(--cp-fg-primary);
+}
+
+[data-accessible-mode="opendyslexic-reading"] {
+  --cp-bg-primary: #fefce8;
+  --cp-fg-primary: #09090b;
+  --cp-accent-primary: #1d4ed8;
+  --cp-font-sans: "OpenDyslexic", "Atkinson Hyperlegible", sans-serif;
+  --cp-font-mono: "OpenDyslexicMono", "Atkinson Hyperlegible", monospace;
+  --cp-letter-spacing: 0.06em;
+  --cp-line-height: 1.85;
+  background-color: var(--cp-bg-primary);
+  color: var(--cp-fg-primary);
+  letter-spacing: var(--cp-letter-spacing);
+  line-height: var(--cp-line-height);
+}
+
+/* High-visibility focus indicator (ring-4 ring-yellow-400) */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 4px solid #facc15;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.85);
+}
+
+/* Bionic Reading highlights initial letters of words in comments/prose */
+.bionic-word-lead {
+  font-weight: 800;
+  color: var(--cp-accent-primary);
+}
+
+.monaco-accessible-editor {
+  font-family: var(--cp-font-mono);
+  letter-spacing: var(--cp-letter-spacing);
+  line-height: var(--cp-line-height);
+}
