@@ -56,12 +56,13 @@ async function bootstrap() {
       if (!origin) return callback(null, true);
       if (
         allowedOrigins.includes(origin) ||
-        origin.endsWith('.vercel.app') ||
+        origin === 'https://code-pulse-three.vercel.app' ||
+        /^https:\/\/code-pulse(-[a-zA-Z0-9-]+)?\.vercel\.app$/.test(origin) ||
         /^http:\/\/localhost:\d+$/.test(origin)
       ) {
         return callback(null, true);
       }
-      return callback(null, true);
+      return callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
