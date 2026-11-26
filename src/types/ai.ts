@@ -163,3 +163,102 @@ export interface CodeTranslationResult {
   translatedCode: string;
   typeHintsAdded: boolean;
 }
+
+
+// --- Batch 7 AI Types ---
+export interface DocstringResult {
+  tsDoc: string;
+  markdownDoc: string;
+  inferredParams: Array<{ name: string; type: string; description: string }>;
+  returnType: string;
+}
+
+export interface BenchmarkMetrics {
+  modelName: string;
+  totalTokens: number;
+  durationMs: number;
+  timeToFirstTokenMs: number;
+  tokensPerSecond: number;
+  isWithinSlo: boolean;
+}
+
+export interface TieredHintResult {
+  tier: 1 | 2 | 3;
+  hintMessage: string;
+  conceptualDirection: string;
+  revealsDirectSolution: false;
+}
+
+export interface FewShotExample {
+  id: string;
+  taskType: 'sorting' | 'graph' | 'dp' | 'string' | 'general';
+  language: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  prompt: string;
+  solution: string;
+}
+
+export interface FewShotSelectionResult {
+  selectedExamples: FewShotExample[];
+  retrievalStrategy: string;
+  relevanceScore: number;
+}
+
+export interface RefactoringSmell {
+  ruleId: string;
+  severity: 'low' | 'medium' | 'high';
+  line: number;
+  description: string;
+  suggestedFix: string;
+}
+
+export interface RefactoringResult {
+  smellsDetected: RefactoringSmell[];
+  refactoredCode: string;
+  optimizationSummary: string;
+}
+
+export interface SemanticCacheEntry {
+  query: string;
+  embedding: number[];
+  response: string;
+  hitCount: number;
+  timestamp: number;
+}
+
+export interface SemanticCacheLookupResult {
+  isHit: boolean;
+  similarity: number;
+  cachedResponse?: string;
+}
+
+export interface SanitizedPrompt {
+  sanitizedText: string;
+  strippedTokens: string[];
+  injectionAttemptsDetected: number;
+}
+
+export interface AlgorithmicBreakdown {
+  problemSummary: string;
+  divergenceStep: string;
+  failedTestAnalysis: {
+    input: string;
+    expected: string;
+    actual: string;
+  };
+  recommendations: string[];
+}
+
+export interface PlagiarismComparison {
+  similarityScore: number;
+  isFlagged: boolean;
+  commonNormalizedTokens: number;
+  verdict: 'unique' | 'suspicious' | 'plagiarized';
+}
+
+export interface DifficultyCalibration {
+  predictedDifficulty: number;
+  difficultyTier: 'easy' | 'medium' | 'hard' | 'expert';
+  predictedPassRate: number;
+  complexityFactors: string[];
+}
