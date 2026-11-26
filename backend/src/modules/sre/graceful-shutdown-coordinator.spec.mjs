@@ -1,34 +1,77 @@
-import { describe, it } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 
-class GracefulShutdownCoordinatorService {
-  constructor() { this.hooks = []; this.shuttingDown = false; }
-  registerHook(name, prio, hook) {
-    this.hooks.push({ name, prio, hook });
-    this.hooks.sort((a, b) => b.prio - a.prio);
+class GracefulShutdownCoordinator {
+  constructor() {
+    this.inFlight = new Map();
+    this.state = 'running';
+    this.drainedCount = 0;
   }
-  async initiateShutdown() {
-    this.shuttingDown = true;
-    const completed = [];
-    for (const h of this.hooks) {
-      await h.hook();
-      completed.push(h.name);
+
+  trackMessage(msg) {
+    if (this.state !== 'running') {
+      return false;
     }
-    return { completed };
+    this.inFlight.set(msg.messageId, msg);
+    return true;
+  }
+
+  ackMessage(messageId) {
+    if (this.inFlight.delete(messageId)) {
+      this.drainedCount++;
+    }
+  }
+
+  async initiateShutdown(graceTimeoutMs = 5000) {
+    const startTime = Date.now();
+    this.state = 'shutting_down';
+
+    const checkIntervalMs = 25;
+    let elapsed = 0;
+    let forcedClose = false;
+
+    while (this.inFlight.size > 0 && elapsed < graceTimeoutMs) {
+      await new Promise(resolve => setTimeout(resolve, checkIntervalMs));
+      elapsed = Date.now() - startTime;
+    }
+
+    if (this.inFlight.size > 0) {
+      forcedClose = true;
+      this.inFlight.clear();
+    }
+
+    this.state = 'terminated';
+    return {
+      state: 'terminated',
+      inFlightCount: 0,
+      drainedCount: this.drainedCount,
+      forcedClose,
+      durationMs: Date.now() - startTime
+    };
+  }
+
+  getStatus() {
+    return {
+      state: this.state,
+      inFlightCount: this.inFlight.size,
+      drainedCount: this.drainedCount,
+      forcedClose: false,
+      durationMs: 0
+    };
   }
 }
 
-describe('GracefulShutdownCoordinatorService (Issue #1867)', () => {
-  it('should execute registered shutdown hooks in priority order', async () => {
-    const coordinator = new GracefulShutdownCoordinatorService();
-    const sequence = [];
+test('GracefulShutdownCoordinator - drains in-flight socket messages prior to termination', async () => {
+  const coordinator = new GracefulShutdownCoordinator();
+  assert.strictEqual(coordinator.trackMessage({ messageId: 'm1', connectionId: 'ws-1', payloadSize: 64, queuedAt: Date.now() }), true);
 
-    coordinator.registerHook('close-db', 10, async () => { sequence.push('db'); });
-    coordinator.registerHook('drain-http', 100, async () => { sequence.push('http'); });
-    coordinator.registerHook('drain-ws', 50, async () => { sequence.push('ws'); });
+  const shutdownPromise = coordinator.initiateShutdown(1000);
+  assert.strictEqual(coordinator.trackMessage({ messageId: 'm2', connectionId: 'ws-2', payloadSize: 64, queuedAt: Date.now() }), false);
 
-    const res = await coordinator.initiateShutdown();
-    assert.deepEqual(sequence, ['http', 'ws', 'db']);
-    assert.equal(res.completed.length, 3);
-  });
+  coordinator.ackMessage('m1');
+  const res = await shutdownPromise;
+
+  assert.strictEqual(res.state, 'terminated');
+  assert.strictEqual(res.drainedCount, 1);
+  assert.strictEqual(res.forcedClose, false);
 });
