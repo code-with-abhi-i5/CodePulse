@@ -9,9 +9,11 @@ import { CountryNormalizerService } from './country-normalizer.service';
 import { LeaderboardWorker } from './leaderboard.worker';
 import { ZscoreNormalizerService } from './zscore-normalizer.service';
 import { ShardedLeaderboardService } from './sharded-leaderboard.service';
+import { MaterializedViewRefreshService } from './materialized-view-refresh.service';
+import { LeaderboardCqrsModule } from './cqrs/leaderboards-cqrs.module';
 
 @Module({
-  imports: [SecurityModule, QueuesModule],
+  imports: [SecurityModule, QueuesModule, LeaderboardCqrsModule],
   controllers: [LeaderboardsController],
   providers: [
     LeaderboardsService,
@@ -21,11 +23,14 @@ import { ShardedLeaderboardService } from './sharded-leaderboard.service';
     LeaderboardWorker,
     ZscoreNormalizerService,
     ShardedLeaderboardService,
+    MaterializedViewRefreshService,
   ],
   exports: [
     LeaderboardsService,
     ZscoreNormalizerService,
     ShardedLeaderboardService,
+    MaterializedViewRefreshService,
+    LeaderboardCqrsModule,
   ],
 })
 export class LeaderboardsModule {}

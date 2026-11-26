@@ -1,221 +1,324 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useMemo, useState } from "react";
 import {
-  Boxes,
-  Database,
-  ArrowRight,
-  Type,
-  StickyNote,
-  Download,
-  Share2,
-  Trash2,
-  Code2,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
-  Sparkles,
+  Square,
+  Database,
+  ArrowRight,
+  Workflow,
+  Download,
+  MousePointer2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import {
+  ArchitectureShapeKind,
+  clampZoom,
+  decodeStrokeBinaryDelta,
+  encodeStrokeBinaryDelta,
+  exportDiagramToMermaid,
+  exportDiagramToPngDataUrl,
+  exportDiagramToSvg,
+  interpolateStrokePoints,
+  renderElementSvgMarkup,
+  screenToWorld,
+  WhiteboardElement,
+} from "./tools/shape-drawer";
 
-export interface WhiteboardShape {
-  id: string;
-  type: "box" | "microservice" | "database" | "arrow" | "text" | "sticky_note";
+export interface TeammateLaserCursor {
+  peerId: string;
+  peerName: string;
   x: number;
   y: number;
-  width: number;
-  height: number;
-  label: string;
   color: string;
-  fromNodeId?: string;
-  toNodeId?: string;
 }
 
 export interface WhiteboardCanvasProps {
-  roomId?: string;
-  initialShapes?: WhiteboardShape[];
-  onExport?: (format: "svg" | "mermaid") => void;
+  initialElements?: WhiteboardElement[];
+  laserCursors?: TeammateLaserCursor[];
+  gridSize?: number;
+  onVectorDeltaBroadcast?: (deltaBytes: ArrayBuffer, element: WhiteboardElement) => void;
 }
 
-export function WhiteboardCanvas({
-  roomId = "default-room",
-  initialShapes = [
-    {
-      id: "gw",
-      type: "microservice",
-      x: 60,
-      y: 100,
-      width: 150,
-      height: 60,
-      label: "API Gateway",
-      color: "#3B82F6",
-    },
-    {
-      id: "auth",
-      type: "microservice",
-      x: 280,
-      y: 60,
-      width: 150,
-      height: 60,
-      label: "Auth Service",
-      color: "#8B5CF6",
-    },
-    {
-      id: "db",
-      type: "database",
-      x: 500,
-      y: 100,
-      width: 140,
-      height: 70,
-      label: "PostgreSQL DB",
-      color: "#10B981",
-    },
+export const DEFAULT_WHITEBOARD_ELEMENTS: WhiteboardElement[] = [
+  {
+    id: "api-gw",
+    kind: "SERVICE_RECTANGLE",
+    label: "API Gateway",
+    x: 120,
+    y: 160,
+    width: 150,
+    height: 64,
+    color: "#38BDF8",
+  },
+  {
+    id: "event-bus",
+    kind: "MESSAGE_QUEUE_PIPE",
+    label: "Kafka / Event Bus",
+    x: 340,
+    y: 166,
+    width: 170,
+    height: 52,
+    color: "#A78BFA",
+  },
+  {
+    id: "pg-primary",
+    kind: "DATABASE_CYLINDER",
+    label: "Postgres Primary",
+    x: 590,
+    y: 150,
+    width: 150,
+    height: 84,
+    color: "#34D399",
+  },
+  {
+    id: "edge-1",
+    kind: "DIRECTED_ARROW",
+    label: "Publish Event",
+    x: 270,
+    y: 192,
+    width: 70,
+    height: 0,
+    fromId: "api-gw",
+    toId: "event-bus",
+    color: "#FBBF24",
+  },
+];
+
+export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
+  initialElements = DEFAULT_WHITEBOARD_ELEMENTS,
+  laserCursors = [
+    { peerId: "p-1", peerName: "Sonia", x: 195, y: 190, color: "#38BDF8" },
+    { peerId: "p-2", peerName: "Aarav", x: 660, y: 190, color: "#F43F5E" },
   ],
-  onExport,
-}: WhiteboardCanvasProps) {
-  const [shapes, setShapes] = useState<WhiteboardShape[]>(initialShapes);
-  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
-  const [zoom, setZoom] = useState<number>(1);
+  gridSize = 20,
+  onVectorDeltaBroadcast,
+}) => {
+  const [elements, setElements] = useState<WhiteboardElement[]>(initialElements);
+  const [selectedTool, setSelectedTool] = useState<ArchitectureShapeKind>("SERVICE_RECTANGLE");
+  const [zoom, setZoom] = useState<number>(1.0);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
+  const [exportedArtifact, setExportedArtifact] = useState<{
+    format: "PNG" | "SVG" | "MERMAID";
+    content: string;
+  } | null>(null);
 
-  const handleExportSvg = useCallback(() => {
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700">
-      <rect width="100%" height="100%" fill="#090d16"/>
-      ${shapes
-        .map(
-          (s) =>
-            `<rect x="${s.x}" y="${s.y}" width="${s.width}" height="${s.height}" rx="8" fill="${s.color}" fill-opacity="0.3" stroke="${s.color}" stroke-width="2"/>
-             <text x="${s.x + s.width / 2}" y="${s.y + s.height / 2 + 5}" fill="#ffffff" font-family="sans-serif" font-size="12" text-anchor="middle">${s.label}</text>`
-        )
-        .join("\n")}
-    </svg>`;
+  const zoomPercent = Math.round(clampZoom(zoom) * 100);
 
-    const blob = new Blob([svgContent], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `architecture-${roomId}.svg`;
-    link.click();
-    URL.revokeObjectURL(url);
-    onExport?.("svg");
-    toast.success("Exported Architecture Canvas as SVG!");
-  }, [shapes, roomId, onExport]);
+  const visibleElements = useMemo(() => elements, [elements]);
 
-  const handleExportMermaid = useCallback(() => {
-    let mermaidText = "graph TD\n";
-    shapes.forEach((s) => {
-      const sanitizedLabel = s.label.replace(/[^a-zA-Z0-9 ]/g, "");
-      mermaidText += `  ${s.id}["${sanitizedLabel}"]\n`;
-    });
-    mermaidText += "  gw --> auth\n  auth --> db\n";
+  const handleZoomChange = (nextZoom: number) => {
+    setZoom(clampZoom(nextZoom));
+  };
 
-    navigator.clipboard.writeText(mermaidText);
-    onExport?.("mermaid");
-    toast.success("Mermaid.js diagram copied to clipboard!");
-  }, [shapes, onExport]);
+  const handleAddShapeAt = (clientX: number, clientY: number) => {
+    const worldPt = screenToWorld(
+      { x: clientX, y: clientY },
+      { panX: pan.x, panY: pan.y, zoom },
+      gridSize,
+      snapEnabled,
+    );
+
+    const rawStroke = interpolateStrokePoints([
+      { x: worldPt.x, y: worldPt.y },
+      { x: worldPt.x + 80, y: worldPt.y + 40 },
+    ]);
+    const encodedDelta = encodeStrokeBinaryDelta(rawStroke);
+    const decodedStroke = decodeStrokeBinaryDelta(encodedDelta);
+
+    const newEl: WhiteboardElement = {
+      id: `el-${elements.length + 1}`,
+      kind: selectedTool,
+      label: `${selectedTool.replace(/_/g, " ")} #${elements.length + 1}`,
+      x: worldPt.x,
+      y: worldPt.y,
+      width: selectedTool === "DIRECTED_ARROW" ? 110 : 150,
+      height: selectedTool === "DIRECTED_ARROW" ? 0 : 68,
+      strokePoints: decodedStroke,
+      color: "#38BDF8",
+    };
+
+    setElements((prev) => [...prev, newEl]);
+    onVectorDeltaBroadcast?.(encodedDelta, newEl);
+  };
 
   return (
-    <div className="flex flex-col w-full h-[650px] border border-border rounded-xl bg-slate-950 text-foreground overflow-hidden shadow-xl">
-      {/* Canvas Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900/80 border-b border-border backdrop-blur">
-        <div className="flex items-center gap-2">
-          <Boxes className="w-5 h-5 text-primary" />
-          <span className="font-semibold text-sm text-white">Infinite Architecture Whiteboard</span>
-          <span className="text-xs text-muted-foreground ml-2">Room: {roomId}</span>
+    <div
+      data-testid="whiteboard-canvas-shell"
+      data-zoom-percent={zoomPercent}
+      data-element-count={visibleElements.length}
+      className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-zinc-100"
+    >
+      {/* Toolbar: Shape Primitives, Zoom (10%..500%), Pan & Export */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            data-testid="tool-service-rect"
+            onClick={() => setSelectedTool("SERVICE_RECTANGLE")}
+            className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold hover:bg-zinc-800"
+          >
+            <Square className="h-3.5 w-3.5 text-sky-400" /> Service
+          </button>
+          <button
+            type="button"
+            data-testid="tool-db-cylinder"
+            onClick={() => setSelectedTool("DATABASE_CYLINDER")}
+            className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold hover:bg-zinc-800"
+          >
+            <Database className="h-3.5 w-3.5 text-emerald-400" /> Database
+          </button>
+          <button
+            type="button"
+            data-testid="tool-mq-pipe"
+            onClick={() => setSelectedTool("MESSAGE_QUEUE_PIPE")}
+            className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold hover:bg-zinc-800"
+          >
+            <Workflow className="h-3.5 w-3.5 text-purple-400" /> Queue Pipe
+          </button>
+          <button
+            type="button"
+            data-testid="tool-arrow"
+            onClick={() => setSelectedTool("DIRECTED_ARROW")}
+            className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold hover:bg-zinc-800"
+          >
+            <ArrowRight className="h-3.5 w-3.5 text-amber-400" /> Arrow
+          </button>
         </div>
 
-        {/* Toolbar items */}
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleExportSvg}
-            className="h-8 gap-1.5 text-xs text-slate-200 border-slate-700 hover:bg-slate-800"
+        <div className="flex flex-wrap items-center gap-2">
+          <span data-testid="whiteboard-zoom-readout" className="font-mono text-xs text-cyan-300">
+            {zoomPercent}%
+          </span>
+          <button
+            type="button"
+            data-testid="whiteboard-zoom-out"
+            onClick={() => handleZoomChange(zoom - 0.25)}
+            className="rounded-lg border border-zinc-700 bg-zinc-900 p-1.5 hover:bg-zinc-800"
           >
-            <Download className="w-3.5 h-3.5" />
-            Export SVG
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleExportMermaid}
-            className="h-8 gap-1.5 text-xs text-slate-200 border-slate-700 hover:bg-slate-800"
+            <ZoomOut className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            data-testid="whiteboard-zoom-in"
+            onClick={() => handleZoomChange(zoom + 0.25)}
+            className="rounded-lg border border-zinc-700 bg-zinc-900 p-1.5 hover:bg-zinc-800"
           >
-            <Code2 className="w-3.5 h-3.5 text-emerald-400" />
-            Copy Mermaid.js
-          </Button>
+            <ZoomIn className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            data-testid="whiteboard-pan-right"
+            onClick={() => setPan((p) => ({ x: p.x + 40, y: p.y }))}
+            className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs hover:bg-zinc-800"
+          >
+            Pan +X
+          </button>
+          <button
+            type="button"
+            data-testid="toggle-grid-snap"
+            onClick={() => setSnapEnabled((s) => !s)}
+            className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs hover:bg-zinc-800"
+          >
+            Snap: {snapEnabled ? "ON" : "OFF"}
+          </button>
         </div>
       </div>
 
-      {/* Infinite Canvas Area */}
-      <div className="relative flex-1 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] overflow-hidden select-none">
-        <div
-          className="w-full h-full relative transition-transform duration-75"
-          style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)` }}
+      {/* Export Controls: PNG, SVG, Mermaid.js */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          data-testid="export-mermaid-btn"
+          onClick={() =>
+            setExportedArtifact({
+              format: "MERMAID",
+              content: exportDiagramToMermaid(visibleElements),
+            })
+          }
+          className="inline-flex items-center gap-1 rounded-lg border border-indigo-500/40 bg-indigo-500/15 px-3 py-1.5 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/25"
         >
-          {shapes.map((s) => {
-            const isSelected = selectedShapeId === s.id;
-            return (
-              <div
-                key={s.id}
-                onClick={() => setSelectedShapeId(s.id)}
-                style={{
-                  left: `${s.x}px`,
-                  top: `${s.y}px`,
-                  width: `${s.width}px`,
-                  height: `${s.height}px`,
-                  borderColor: s.color,
-                }}
-                className={`absolute rounded-xl border-2 flex flex-col items-center justify-center p-3 cursor-move shadow-md bg-slate-900/80 backdrop-blur transition-all ${
-                  isSelected ? "ring-2 ring-primary scale-105" : "hover:border-primary"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {s.type === "database" ? (
-                    <Database className="w-4 h-4" style={{ color: s.color }} />
-                  ) : (
-                    <Boxes className="w-4 h-4" style={{ color: s.color }} />
-                  )}
-                  <span className="text-xs font-semibold text-white">{s.label}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Zoom Controls */}
-        <div className="absolute bottom-4 left-4 flex items-center gap-1 bg-slate-900/90 border border-slate-800 rounded-lg p-1 z-20">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
-            className="h-7 w-7 text-slate-300"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
-            className="h-7 w-7 text-slate-300"
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => {
-              setZoom(1);
-              setPan({ x: 0, y: 0 });
-            }}
-            className="h-7 w-7 text-slate-300"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </Button>
-        </div>
+          <Download className="h-3.5 w-3.5" /> Export Mermaid.js
+        </button>
+        <button
+          type="button"
+          data-testid="export-svg-btn"
+          onClick={() =>
+            setExportedArtifact({
+              format: "SVG",
+              content: exportDiagramToSvg(visibleElements),
+            })
+          }
+          className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800"
+        >
+          <Download className="h-3.5 w-3.5" /> Export SVG
+        </button>
+        <button
+          type="button"
+          data-testid="export-png-btn"
+          onClick={() =>
+            setExportedArtifact({
+              format: "PNG",
+              content: exportDiagramToPngDataUrl(visibleElements),
+            })
+          }
+          className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-semibold hover:bg-zinc-800"
+        >
+          <Download className="h-3.5 w-3.5" /> Export PNG
+        </button>
       </div>
+
+      {/* Interactive SVG Whiteboard Viewport + Multi-User Colored Laser Pointers */}
+      <div
+        data-testid="whiteboard-pan-readout"
+        data-pan={`${pan.x},${pan.y}`}
+        className="relative h-80 w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900"
+      >
+        <svg
+          data-testid="whiteboard-svg-stage"
+          viewBox="0 0 1000 500"
+          onClick={(e) => handleAddShapeAt(e.clientX, e.clientY)}
+          className="h-full w-full cursor-crosshair"
+          dangerouslySetInnerHTML={{
+            __html: `<g transform="translate(${pan.x}, ${pan.y}) scale(${zoom})">${visibleElements
+              .map(renderElementSvgMarkup)
+              .join("")}</g>`,
+          }}
+        />
+
+        {laserCursors.map((cursor) => (
+          <div
+            key={cursor.peerId}
+            data-testid={`laser-cursor-${cursor.peerId}`}
+            style={{ left: `${cursor.x}px`, top: `${cursor.y}px` }}
+            className="pointer-events-none absolute flex items-center gap-1"
+          >
+            <MousePointer2
+              style={{ color: cursor.color }}
+              className="h-4 w-4 drop-shadow"
+            />
+            <span
+              style={{ backgroundColor: cursor.color }}
+              className="rounded px-1.5 py-0.5 text-[10px] font-bold text-zinc-950"
+            >
+              {cursor.peerName}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {exportedArtifact && (
+        <pre
+          data-testid="whiteboard-export-output"
+          data-export-format={exportedArtifact.format}
+          className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/90 p-3 text-xs text-emerald-300"
+        >
+          {exportedArtifact.content}
+        </pre>
+      )}
     </div>
   );
-}
+};
+
+export default WhiteboardCanvas;
