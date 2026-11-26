@@ -1,10 +1,11 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { GithubSyncService } from './github-sync.service';
+import { MaterializedViewRefreshService, FastRefreshTriggerPayload } from './materialized-view-refresh.service';
 
 @Injectable()
 export class LeaderboardsService {
@@ -15,6 +16,7 @@ export class LeaderboardsService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @InjectQueue('leaderboard-sync') private readonly syncQueue: Queue,
     private readonly githubSync: GithubSyncService,
+    @Optional() private readonly mvRefreshService?: MaterializedViewRefreshService,
   ) {}
 
   async getGlobalLeaderboard(cursor?: string, limit: number = 20) {
@@ -25,6 +27,67 @@ export class LeaderboardsService {
       return cachedData;
     }
 
+    // 1. Query PostgreSQL Materialized View with instant index scan on rank
+    try {
+      let rows: any[];
+      if (cursor) {
+        rows = await this.prisma.$queryRawUnsafe<any[]>(
+          `SELECT 
+             user_id AS id,
+             username,
+             name,
+             avatar AS "avatarUrl",
+             country,
+             total_xp AS score,
+             battle_wins,
+             total_battles,
+             win_rate,
+             rank
+           FROM mv_leaderboard_global
+           WHERE rank > COALESCE((
+             SELECT rank FROM mv_leaderboard_global WHERE user_id = $1 OR username = $1 LIMIT 1
+           ), 0)
+           ORDER BY rank ASC
+           LIMIT $2;`,
+          cursor,
+          limit + 1,
+        );
+      } else {
+        rows = await this.prisma.$queryRawUnsafe<any[]>(
+          `SELECT 
+             user_id AS id,
+             username,
+             name,
+             avatar AS "avatarUrl",
+             country,
+             total_xp AS score,
+             battle_wins,
+             total_battles,
+             win_rate,
+             rank
+           FROM mv_leaderboard_global
+           ORDER BY rank ASC
+           LIMIT $1;`,
+          limit + 1,
+        );
+      }
+
+      if (rows && rows.length > 0) {
+        let nextCursor = null;
+        if (rows.length > limit) {
+          const nextItem = rows.pop();
+          if (nextItem) nextCursor = nextItem.id || nextItem.username;
+        }
+        const result = { data: rows, nextCursor, source: 'mv_leaderboard_global' };
+        // Aligned with 5-minute pg_cron refresh interval
+        await this.cacheManager.set(cacheKey, result, 300000);
+        return result;
+      }
+    } catch (err: any) {
+      this.logger.debug(`Materialized view query failed, falling back to base table: ${err.message}`);
+    }
+
+    // Fallback: Query githubUser table
     const data = await this.prisma.githubUser.findMany({
       take: limit + 1, // +1 for next cursor
       ...(cursor && {
@@ -40,8 +103,7 @@ export class LeaderboardsService {
       if (nextItem) nextCursor = nextItem.id;
     }
 
-    const result = { data, nextCursor };
-    // Cache for 10 minutes
+    const result = { data, nextCursor, source: 'github_users_table' };
     await this.cacheManager.set(cacheKey, result, 600000); 
 
     return result;
@@ -55,6 +117,70 @@ export class LeaderboardsService {
       return cachedData;
     }
 
+    // 1. Query PostgreSQL Materialized View with index scan on (country, rank)
+    try {
+      let rows: any[];
+      if (cursor) {
+        rows = await this.prisma.$queryRawUnsafe<any[]>(
+          `SELECT 
+             user_id AS id,
+             username,
+             name,
+             avatar AS "avatarUrl",
+             country,
+             total_xp AS score,
+             battle_wins,
+             total_battles,
+             win_rate,
+             rank
+           FROM mv_leaderboard_global
+           WHERE LOWER(country) = 'india'
+             AND rank > COALESCE((
+               SELECT rank FROM mv_leaderboard_global 
+               WHERE (user_id = $1 OR username = $1) AND LOWER(country) = 'india' 
+               LIMIT 1
+             ), 0)
+           ORDER BY rank ASC
+           LIMIT $2;`,
+          cursor,
+          limit + 1,
+        );
+      } else {
+        rows = await this.prisma.$queryRawUnsafe<any[]>(
+          `SELECT 
+             user_id AS id,
+             username,
+             name,
+             avatar AS "avatarUrl",
+             country,
+             total_xp AS score,
+             battle_wins,
+             total_battles,
+             win_rate,
+             rank
+           FROM mv_leaderboard_global
+           WHERE LOWER(country) = 'india'
+           ORDER BY rank ASC
+           LIMIT $1;`,
+          limit + 1,
+        );
+      }
+
+      if (rows && rows.length > 0) {
+        let nextCursor = null;
+        if (rows.length > limit) {
+          const nextItem = rows.pop();
+          if (nextItem) nextCursor = nextItem.id || nextItem.username;
+        }
+        const result = { data: rows, nextCursor, source: 'mv_leaderboard_global' };
+        await this.cacheManager.set(cacheKey, result, 300000);
+        return result;
+      }
+    } catch (err: any) {
+      this.logger.debug(`Materialized view India query failed, falling back to base table: ${err.message}`);
+    }
+
+    // Fallback: Query githubUser table
     const data = await this.prisma.githubUser.findMany({
       where: { country: 'India' },
       take: limit + 1,
@@ -71,10 +197,31 @@ export class LeaderboardsService {
       if (nextItem) nextCursor = nextItem.id;
     }
 
-    const result = { data, nextCursor };
+    const result = { data, nextCursor, source: 'github_users_table' };
     await this.cacheManager.set(cacheKey, result, 600000);
 
     return result;
+  }
+
+  /**
+   * Refreshes mv_leaderboard_global concurrently on PostgreSQL.
+   */
+  async refreshMaterializedView(triggeredBy: 'manual' | 'event_top10' | 'event_high_stakes' = 'manual') {
+    if (this.mvRefreshService) {
+      return this.mvRefreshService.executeConcurrentRefresh(triggeredBy);
+    }
+    await this.prisma.$executeRawUnsafe('REFRESH MATERIALIZED VIEW CONCURRENTLY mv_leaderboard_global;');
+    return { success: true };
+  }
+
+  /**
+   * Evaluates match completion and triggers fast refresh if high stakes or top 10 player.
+   */
+  async triggerFastRefreshIfTopPlayer(payload: FastRefreshTriggerPayload) {
+    if (this.mvRefreshService) {
+      return this.mvRefreshService.triggerFastRefreshIfTopPlayer(payload);
+    }
+    return false;
   }
 
   async getFriendsLeaderboard(userId: string, cursor?: string, limit: number = 20) {
