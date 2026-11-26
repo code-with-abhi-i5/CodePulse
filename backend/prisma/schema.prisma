@@ -1800,3 +1800,65 @@ model MaintainabilitySnapshot {
   @@index([filePath])
   @@map("maintainability_snapshots")
 }
+
+
+model TerritoryNode {
+  id             String   @id @default(uuid())
+  nodeKey        String   @unique
+  name           String
+  region         String
+  topicTag       String
+  hexQ           Int
+  hexR           Int
+  ownerGuildId   String?
+  ownerGuildName String?
+  defensePoints  Int      @default(100)
+  conquestPoints Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  @@index([region])
+  @@map("territory_nodes")
+}
+
+model GuildClanMessage {
+  id        String   @id @default(uuid())
+  guildId   String
+  senderId  String
+  senderName String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([guildId, createdAt])
+  @@map("guild_clan_messages")
+}
+
+model GuildSeasonRecord {
+  id             String   @id @default(uuid())
+  seasonNumber   Int
+  guildId        String
+  guildName      String
+  controlledNodes Int
+  totalPoints    Int
+  trophiesAwarded Int
+  treasuryCoins  Int
+  resetAt        DateTime @default(now())
+
+  @@index([seasonNumber, totalPoints])
+  @@map("guild_season_records")
+}
+
+model MatchDisputeAudit {
+  id               String   @id @default(uuid())
+  disputeId        String   @unique
+  matchId          String
+  rulingAction     String   // INVALIDATE_MATCH, AWARD_WIN_PLAYER_A, AWARD_WIN_PLAYER_B, SCHEDULE_REMATCH
+  judgeId          String
+  judgeReason      String   @db.Text
+  digitalSignature String
+  notifiedPlayers  String
+  createdAt        DateTime @default(now())
+
+  @@index([matchId, createdAt])
+  @@map("match_dispute_audits")
+}
+}

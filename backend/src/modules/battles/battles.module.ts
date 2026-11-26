@@ -3,6 +3,7 @@ import { BattlesController } from './battles.controller';
 import { JitterBufferController } from './network/jitter-buffer.controller';
 import { JitterBufferService } from './network/jitter-buffer.service';
 import { BattlesService } from './battles.service';
+import { DisputeAdjudicationService } from './dispute-adjudication.service';
 import { BattlesGateway } from './battles.gateway';
 import { SeasonResetService } from './season-reset.service';
 import { BullModule } from '@nestjs/bullmq';
@@ -71,6 +72,7 @@ import { TrueSkill2Service } from './trueskill2.service';
   ],
   controllers: [BattlesController, JitterBufferController],
   providers: [
+    DisputeAdjudicationService,
     BattlesService,
     JitterBufferService,
     BattlesGateway,
@@ -117,6 +119,7 @@ import { TrueSkill2Service } from './trueskill2.service';
     RedlockService,
   ],
   exports: [
+    DisputeAdjudicationService,
     BattlesService,
     JitterBufferService,
     BattlesGateway,
