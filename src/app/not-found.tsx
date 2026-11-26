@@ -1,105 +1,150 @@
 "use client";
 
-import { motion } from "motion/react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Home, Search, ArrowLeft } from "lucide-react";
+import { Clock, Compass, ShieldCheck } from "lucide-react";
+
+export const FIVE_MINUTES_IN_SECONDS = 5 * 60;
+
+export interface SessionInactivityWarningDialogProps {
+  isAuthenticated?: boolean;
+  remainingSeconds?: number;
+  warningThresholdSeconds?: number;
+  onStayLoggedIn?: () => void;
+  onSessionExpired?: () => void;
+}
+
+export function formatCountdownSeconds(totalSeconds: number): string {
+  const clamped = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(clamped / 60);
+  const seconds = clamped % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+export const SessionInactivityWarningDialog: React.FC<
+  SessionInactivityWarningDialogProps
+> = ({
+  isAuthenticated = true,
+  remainingSeconds = FIVE_MINUTES_IN_SECONDS,
+  warningThresholdSeconds = FIVE_MINUTES_IN_SECONDS,
+  onStayLoggedIn,
+  onSessionExpired,
+}) => {
+  const [secondsLeft, setSecondsLeft] = useState<number>(remainingSeconds);
+  const [expiredNotified, setExpiredNotified] = useState<boolean>(false);
+
+  useEffect(() => {
+    setSecondsLeft(remainingSeconds);
+    setExpiredNotified(false);
+  }, [remainingSeconds]);
+
+  useEffect(() => {
+    if (!isAuthenticated || secondsLeft <= 0) {
+      if (isAuthenticated && secondsLeft <= 0 && !expiredNotified) {
+        setExpiredNotified(true);
+        onSessionExpired?.();
+      }
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [expiredNotified, isAuthenticated, onSessionExpired, secondsLeft]);
+
+  const handleStayLoggedIn = useCallback(() => {
+    setSecondsLeft(FIVE_MINUTES_IN_SECONDS);
+    setExpiredNotified(false);
+    onStayLoggedIn?.();
+  }, [onStayLoggedIn]);
+
+  const shouldShowWarning =
+    isAuthenticated && secondsLeft > 0 && secondsLeft <= warningThresholdSeconds;
+
+  if (!shouldShowWarning) {
+    return null;
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="session-inactivity-title"
+      aria-describedby="session-inactivity-description"
+      data-testid="session-inactivity-dialog"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
+    >
+      <div className="w-full max-w-md rounded-2xl border border-amber-300 bg-white p-5 text-slate-900 shadow-xl dark:border-amber-700 dark:bg-slate-900 dark:text-slate-100 sm:p-6 md:max-w-lg lg:p-7">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+            <Clock className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="space-y-1.5">
+            <h2
+              id="session-inactivity-title"
+              className="text-base font-bold tracking-tight sm:text-lg md:text-xl"
+            >
+              Session Inactivity Warning
+            </h2>
+            <p
+              id="session-inactivity-description"
+              className="text-xs leading-relaxed text-slate-600 dark:text-slate-300 sm:text-sm"
+            >
+              Your authenticated session will expire due to inactivity in{" "}
+              <span
+                data-testid="session-countdown"
+                className="font-mono font-semibold text-amber-700 dark:text-amber-300"
+              >
+                {formatCountdownSeconds(secondsLeft)}
+              </span>{" "}
+              (5-minute warning window).
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end sm:gap-3">
+          <button
+            type="button"
+            data-testid="stay-logged-in-button"
+            onClick={handleStayLoggedIn}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 dark:bg-indigo-500 dark:hover:bg-indigo-400 dark:focus:ring-offset-slate-900 sm:w-auto sm:text-sm"
+          >
+            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+            Stay Logged In
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Background effects */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[128px] animate-pulse-slow" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[128px] animate-pulse-slow" style={{ animationDelay: "1.5s" }} />
+    <main className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center gap-4 px-4 py-12 text-center text-slate-900 dark:text-slate-100 sm:px-6 lg:px-8">
+      <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <Compass className="h-6 w-6" aria-hidden="true" />
       </div>
-
-      <div className="relative z-10 text-center px-4">
-        {/* Animated 404 */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="mb-8"
-        >
-          <h1 className="text-[180px] md:text-[240px] font-bold leading-none gradient-text select-none">
-            404
-          </h1>
-        </motion.div>
-
-        {/* Floating code elements */}
-        <div className="absolute inset-0 pointer-events-none">
-          {[
-            { text: "<div>", x: "10%", y: "20%", delay: 0 },
-            { text: "{ }", x: "80%", y: "15%", delay: 0.5 },
-            { text: "=>", x: "15%", y: "70%", delay: 1 },
-            { text: "<//>", x: "85%", y: "65%", delay: 1.5 },
-            { text: "null", x: "50%", y: "10%", delay: 2 },
-            { text: "404", x: "70%", y: "80%", delay: 0.8 },
-          ].map((item, i) => (
-            <motion.span
-              key={i}
-              className="absolute font-mono text-white/5 text-2xl"
-              style={{ left: item.x, top: item.y }}
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: [0, 0.15, 0],
-                y: [0, -20, 0],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                delay: item.delay,
-                ease: "easeInOut",
-              }}
-            >
-              {item.text}
-            </motion.span>
-          ))}
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 24 }}
-        >
-          <h2 className="text-2xl md:text-3xl font-bold mb-3">
-            Page not found
-          </h2>
-          <p className="text-muted-foreground text-lg max-w-md mx-auto mb-8">
-            The page you&apos;re looking for doesn&apos;t exist or has been moved.
-            Let&apos;s get you back on track.
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, type: "spring", stiffness: 300, damping: 24 }}
-          className="flex items-center justify-center gap-3"
-        >
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium hover:opacity-90 transition-opacity"
-          >
-            <Home className="w-4 h-4" />
-            Dashboard
-          </Link>
-          <Link
-            href="/search"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground font-medium hover:bg-white/10 transition-colors"
-          >
-            <Search className="w-4 h-4" />
-            Search
-          </Link>
-          <button
-            onClick={() => window.history.back()}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground font-medium hover:bg-white/10 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Go Back
-          </button>
-        </motion.div>
-      </div>
-    </div>
+      <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl">
+        Page Not Found
+      </h1>
+      <p className="max-w-md text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+        The requested route could not be found in CodePulse.
+      </p>
+      <Link
+        href="/"
+        className="mt-2 inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-900 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 sm:text-sm"
+      >
+        Return Home
+      </Link>
+      <SessionInactivityWarningDialog isAuthenticated={false} />
+    </main>
   );
 }
