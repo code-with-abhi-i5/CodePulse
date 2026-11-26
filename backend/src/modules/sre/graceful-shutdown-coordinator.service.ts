@@ -1,36 +1,59 @@
-export type ShutdownHook = () => Promise<void>;
+import { InFlightMessage, ShutdownStatus } from '../../types/sre';
 
-export class GracefulShutdownCoordinatorService {
-  private hooks: { name: string; priority: number; hook: ShutdownHook }[] = [];
-  private isShuttingDown: boolean = false;
+export class GracefulShutdownCoordinator {
+  private inFlight: Map<string, InFlightMessage> = new Map();
+  private state: 'running' | 'shutting_down' | 'terminated' = 'running';
+  private drainedCount: number = 0;
 
-  public registerHook(name: string, priority: number, hook: ShutdownHook): void {
-    this.hooks.push({ name, priority, hook });
-    this.hooks.sort((a, b) => b.priority - a.priority); // Highest priority executed first
+  trackMessage(msg: InFlightMessage): boolean {
+    if (this.state !== 'running') {
+      return false;
+    }
+    this.inFlight.set(msg.messageId, msg);
+    return true;
   }
 
-  public async initiateShutdown(timeoutMs: number = 10000): Promise<{ completed: string[]; timedOut: boolean }> {
-    this.isShuttingDown = true;
-    const completed: string[] = [];
-    let timedOut = false;
+  ackMessage(messageId: string): void {
+    if (this.inFlight.delete(messageId)) {
+      this.drainedCount++;
+    }
+  }
 
-    const timer = setTimeout(() => { timedOut = true; }, timeoutMs);
+  async initiateShutdown(graceTimeoutMs: number = 5000): Promise<ShutdownStatus> {
+    const startTime = Date.now();
+    this.state = 'shutting_down';
 
-    for (const h of this.hooks) {
-      if (timedOut) break;
-      try {
-        await h.hook();
-        completed.push(h.name);
-      } catch (err) {
-        console.error(`Shutdown hook ${h.name} failed:`, err);
-      }
+    const checkIntervalMs = 50;
+    let elapsed = 0;
+    let forcedClose = false;
+
+    while (this.inFlight.size > 0 && elapsed < graceTimeoutMs) {
+      await new Promise(resolve => setTimeout(resolve, checkIntervalMs));
+      elapsed = Date.now() - startTime;
     }
 
-    clearTimeout(timer);
-    return { completed, timedOut };
+    if (this.inFlight.size > 0) {
+      forcedClose = true;
+      this.inFlight.clear();
+    }
+
+    this.state = 'terminated';
+    return {
+      state: 'terminated',
+      inFlightCount: 0,
+      drainedCount: this.drainedCount,
+      forcedClose,
+      durationMs: Date.now() - startTime
+    };
   }
 
-  public isTerminating(): boolean {
-    return this.isShuttingDown;
+  getStatus(): ShutdownStatus {
+    return {
+      state: this.state,
+      inFlightCount: this.inFlight.size,
+      drainedCount: this.drainedCount,
+      forcedClose: false,
+      durationMs: 0
+    };
   }
 }
