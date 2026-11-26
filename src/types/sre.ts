@@ -87,3 +87,153 @@ export interface EphemeralEnvSpec {
   createdAt: number;
   status: 'provisioning' | 'active' | 'expired';
 }
+
+// --- Batch 4 SRE Types ---
+export interface SyntheticStepResult {
+  stepName: string;
+  durationMs: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface SyntheticProbeResult {
+  probeId: string;
+  targetRegion: string;
+  totalDurationMs: number;
+  success: boolean;
+  steps: SyntheticStepResult[];
+  timestamp: number;
+}
+
+export interface RegionHealthStatus {
+  regionId: string;
+  healthy: boolean;
+  consecutiveFailures: number;
+  lastHeartbeat: number;
+}
+
+export interface FailoverDecision {
+  primaryRegion: string;
+  activeRegion: string;
+  failoverTriggered: boolean;
+  dnsWeightPrimary: number;
+  dnsWeightSecondary: number;
+  reason: string;
+}
+
+export interface StackFrame {
+  functionName: string;
+  fileName: string;
+  lineNumber: number;
+  hitCount: number;
+}
+
+export interface FlamegraphNode {
+  name: string;
+  value: number;
+  children: FlamegraphNode[];
+}
+
+export interface TcpRetransmitMetric {
+  nodeId: string;
+  interfaceName: string;
+  retransmitCount: number;
+  totalPackets: number;
+  rttMs: number;
+  timestamp: number;
+}
+
+export interface NetworkDropAnomaly {
+  nodeId: string;
+  isAnomaly: boolean;
+  retransmitRatioPercent: number;
+  severity: 'normal' | 'warning' | 'critical';
+}
+
+export interface EventLoopLagSample {
+  expectedIntervalMs: number;
+  actualDurationMs: number;
+  lagMs: number;
+  timestamp: number;
+}
+
+export interface EventLoopLagStatus {
+  sampleCount: number;
+  p50LagMs: number;
+  p99LagMs: number;
+  isSaturated: boolean;
+}
+
+export interface SloWindowMetric {
+  windowMinutes: number;
+  totalRequests: number;
+  failedRequests: number;
+  errorRate: number;
+}
+
+export interface SloBurnRateAlert {
+  sloName: string;
+  burnRate1h: number;
+  burnRate6h: number;
+  triggerPage: boolean;
+  triggerTicket: boolean;
+  severity: 'none' | 'ticket' | 'page';
+  reason: string;
+}
+
+export interface LockClaim {
+  transactionId: string;
+  resourceId: string;
+  status: 'held' | 'waiting';
+  timestamp: number;
+}
+
+export interface DeadlockDetectionResult {
+  hasDeadlock: boolean;
+  cycle: string[];
+  victimTransactionId: string | null;
+}
+
+export interface CanaryMetrics {
+  version: string;
+  requestCount: number;
+  errorCount: number;
+  p99LatencyMs: number;
+}
+
+export interface CanaryRoutingDecision {
+  trafficWeightPercent: number;
+  action: 'advance' | 'hold' | 'rollback';
+  canaryErrorRate: number;
+  baselineErrorRate: number;
+  reason: string;
+}
+
+export interface SpanData {
+  traceId: string;
+  spanId: string;
+  serviceName: string;
+  durationMs: number;
+  hasError: boolean;
+  httpStatusCode?: number;
+}
+
+export interface TailSamplingDecision {
+  sample: boolean;
+  reason: 'error' | 'high_latency' | 'probabilistic' | 'dropped';
+}
+
+export interface SocketRttProbe {
+  sourceService: string;
+  destinationService: string;
+  rttMicroseconds: number;
+  jitterMicroseconds: number;
+  timestamp: number;
+}
+
+export interface SocketLatencyStatus {
+  p95RttMs: number;
+  jitterMs: number;
+  isDegraded: boolean;
+  recommendation: string;
+}
