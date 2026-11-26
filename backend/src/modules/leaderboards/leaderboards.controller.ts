@@ -1,13 +1,17 @@
-import { Controller, Get, Query, Req, UseGuards, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Query, Req, UseGuards, Param, ParseIntPipe, HttpCode, HttpStatus } from '@nestjs/common';
 import { LeaderboardsService } from './leaderboards.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PowChallengeGuard } from '../../common/guards/pow-challenge.guard';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { MaterializedViewRefreshService } from './materialized-view-refresh.service';
 
 @ApiTags('Leaderboards')
 @Controller('leaderboards')
 export class LeaderboardsController {
-  constructor(private readonly leaderboardsService: LeaderboardsService) {}
+  constructor(
+    private readonly leaderboardsService: LeaderboardsService,
+    private readonly mvRefreshService: MaterializedViewRefreshService,
+  ) { }
 
   @Get('global')
   @ApiOperation({ summary: 'Get global leaderboard' })
