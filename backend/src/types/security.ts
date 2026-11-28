@@ -35,8 +35,81 @@ export interface MerkleAuditEntry {
   entryHash: string;
 }
 
+export interface DhKeyExchangeResult {
+  sessionId: string;
+  publicKeyHex: string;
+  sharedSecretHash: string;
+  expiresAt: number;
+}
 
-// --- Batch 14 Security Types ---
+export interface CorsEvaluationResult {
+  isAllowed: boolean;
+  origin: string;
+  allowCredentials: boolean;
+  allowHeaders: string[];
+  rejectionReason?: string;
+}
+
+export interface CertValidationResult {
+  isValid: boolean;
+  subject: string;
+  issuer: string;
+  chainLength: number;
+  errors: string[];
+}
+
+export interface ScopedAccessResult {
+  granted: boolean;
+  userId: string;
+  requiredScope: string;
+  heldScopes: string[];
+  reason?: string;
+}
+
+export interface AuditLedgerBlock {
+  index: number;
+  timestamp: number;
+  action: string;
+  actor: string;
+  payload: Record<string, unknown>;
+  previousHash: string;
+  hash: string;
+}
+
+export interface ImdsProbeCheckResult {
+  isSafe: boolean;
+  targetUrl: string;
+  detectedThreat?: 'IMDS_ACCESS' | 'LOCALHOST_PROBE' | 'LINK_LOCAL_PROBE' | 'INVALID_URL';
+  reason?: string;
+}
+
+export interface PodSecurityAuditResult {
+  isCompliant: boolean;
+  violations: string[];
+  score: number;
+}
+
+export interface TotpValidationResult {
+  isValid: boolean;
+  driftSteps: number;
+  stepOffsetSeconds: number;
+}
+
+export interface SocketGovernorStatus {
+  socketId: string;
+  shouldTerminate: boolean;
+  bytesReceived: number;
+  durationMs: number;
+  transferRateBytesPerSec: number;
+  reason?: string;
+}
+
+export interface RedirectValidationResult {
+  isSafe: boolean;
+  sanitizedUrl: string;
+  reason?: string;
+}
+
 export interface TlsScanReport {
   domain: string;
   daysRemaining: number;
