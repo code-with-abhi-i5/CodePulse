@@ -2,17 +2,22 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AddXpDto } from './dto/xp.dto';
 import { LevelsService } from '../levels/levels.service';
+import { XpVelocityGovernorService } from './xp-velocity-governor.service';
+import { XpAnomalyDetectorService } from './xp-anomaly-detector.service';
 
 @Injectable()
 export class XpService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly levels: LevelsService,
+    @Optional() private readonly velocityGovernor?: XpVelocityGovernorService,
+    @Optional() private readonly anomalyDetector?: XpAnomalyDetectorService,
   ) {}
 
   async addXp(dto: AddXpDto, transaction?: Prisma.TransactionClient) {
@@ -31,6 +36,26 @@ export class XpService {
       throw new BadRequestException(
         'XP requires a positive integer amount, a reason and a valid source',
       );
+    }
+
+    // Velocity throttling and anomaly detection
+    if (this.velocityGovernor) {
+      const check = await this.velocityGovernor.checkAndRecordVelocity(
+        dto.userId,
+        dto.amount,
+        dto.source,
+      );
+      if (check.flaggedAnomaly && this.anomalyDetector) {
+        void this.anomalyDetector
+          .recordFraudAlert({
+            userId: dto.userId,
+            amount: dto.amount,
+            source: dto.source || 'MANUAL',
+            reason: dto.reason,
+            anomalyScore: check.anomalyScore,
+          })
+          .catch(() => {});
+      }
     }
 
     const runWithTx = async (tx: Prisma.TransactionClient) => {
@@ -161,5 +186,19 @@ export class XpService {
         transaction,
       };
     });
+  }
+
+  async getUserDailyQuota(userId: string) {
+    if (this.velocityGovernor) {
+      return this.velocityGovernor.getUserDailyQuota(userId);
+    }
+    return {
+      date: new Date().toISOString().slice(0, 10),
+      dailyGamificationCap: 2500,
+      usedGamification: 0,
+      remainingGamificationQuota: 2500,
+      usedGithub: 0,
+      totalXpToday: 0,
+    };
   }
 }
