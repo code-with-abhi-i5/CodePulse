@@ -22,6 +22,7 @@ import { GitService } from '../git/git.service';
 import { ReproSynthesizerService } from './repro-synthesizer.service';
 import { SyntheticBenchmarkService } from './synthetic-benchmark.service';
 import { BenchmarkGeneratorService } from './benchmark-generator.service';
+import { ScaffoldSynthesizerService } from './scaffold-synthesizer.service';
 import { ExecutionService } from '../battles/execution.service';
 import { GithubModule } from '../github/github.module';
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -53,6 +54,7 @@ import { RedisService } from '../../common/redis/redis.service';
     ReproSynthesizerService,
     SyntheticBenchmarkService,
     BenchmarkGeneratorService,
+    ScaffoldSynthesizerService,
     ExecutionService,
     RedisService,
   ],
@@ -79,6 +81,7 @@ import { RedisService } from '../../common/redis/redis.service';
     ReproSynthesizerService,
     SyntheticBenchmarkService,
     BenchmarkGeneratorService,
+    ScaffoldSynthesizerService,
     ExecutionService,
   ],
 })
