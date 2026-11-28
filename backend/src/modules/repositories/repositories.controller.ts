@@ -16,6 +16,7 @@ import { RepositoriesService } from './repositories.service';
 import { ArchiveStreamService } from './archive-stream.service';
 import { ZeroCopyStreamService } from './zero-copy-stream.service';
 import { QueryRepositoriesDto } from './dto/repositories.dto';
+import { QueryRepositoryTreeDto } from './dto/repository-tree.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('repositories')
@@ -123,6 +124,38 @@ export class RepositoriesController {
   })
   async syncRepository(@Request() req: any, @Param('id') id: string) {
     return this.repositoriesService.syncRepository(req.user.id, id);
+  }
+
+  @Get(':id/tree')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Inspect directory hierarchy and git tree for repository (#6799)',
+  })
+  @ApiParam({ name: 'id', description: 'Repository ID' })
+  async getRepositoryTree(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Query() query: QueryRepositoryTreeDto,
+  ) {
+    return this.repositoriesService.getRepositoryTree(
+      req.user.id,
+      id,
+      query.ref,
+      query.path,
+      query.depth,
+    );
+  }
+
+  @Get(':id/scorecard')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get automated code quality scorecard and architectural rigor metrics (#6799)',
+  })
+  @ApiParam({ name: 'id', description: 'Repository ID' })
+  async getQualityScorecard(@Request() req: any, @Param('id') id: string) {
+    return this.repositoriesService.getQualityScorecard(req.user.id, id);
   }
 
   @Get(':id/ast')
