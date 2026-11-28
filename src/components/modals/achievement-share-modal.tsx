@@ -214,6 +214,22 @@ export function AchievementShareModal({
 }: AchievementShareModalProps) {
   const [copied, setCopied] = useState(false);
 
+  // Global Escape key listener across all custom modals
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [isOpen, onClose]);
+
   // Trigger celebration on modal open
   useEffect(() => {
     if (isOpen && (victory || achievement?.isUnlocked)) {
