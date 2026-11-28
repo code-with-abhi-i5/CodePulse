@@ -58,6 +58,21 @@ describe("ClaimRewardModal", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("supports open prop as alternative to isOpen", () => {
+    reducedMotion.value = true;
+    const onClose = vi.fn();
+    render(
+      <ClaimRewardModal
+        open={true}
+        onClose={onClose}
+        challenge={challenge}
+        previousXp={1000}
+      />
+    );
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
   it("fires confetti once the chest opens", async () => {
     vi.useFakeTimers();
     renderModal();

@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Package, PackageOpen, Zap } from "lucide-react";
@@ -11,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { Challenge } from "@/types";
 
 // ===========================
@@ -30,7 +32,10 @@ function useCountUp(from: number, to: number, animate: boolean) {
   const [value, setValue] = useState(from);
 
   useEffect(() => {
-    if (!animate) return;
+    if (!animate) {
+      setValue(to);
+      return;
+    }
 
     let frame = 0;
     const start = performance.now();
@@ -65,13 +70,22 @@ async function fireConfetti() {
       disableForReducedMotion: true,
     };
 
-    confetti({ ...base, particleCount: 40, scalar: 1.2, origin: { x: 0.5, y: 0.4 } });
+    confetti({
+      ...base,
+      particleCount: 40,
+      scalar: 1.2,
+      origin: { x: 0.5, y: 0.4 },
+    });
     window.setTimeout(() => {
-      confetti({ ...base, particleCount: 25, scalar: 0.8, origin: { x: 0.5, y: 0.4 } });
+      confetti({
+        ...base,
+        particleCount: 25,
+        scalar: 0.8,
+        origin: { x: 0.5, y: 0.4 },
+      });
     }, 180);
   } catch {
-    // The canvas can be unavailable (very old browsers, blocked contexts).
-    // The celebration still works without the confetti.
+    // The canvas can be unavailable in JSDOM or restricted contexts.
   }
 }
 
@@ -79,12 +93,20 @@ async function fireConfetti() {
 // Types
 // ===========================
 
-interface ClaimRewardModalProps {
-  isOpen: boolean;
+export interface ClaimRewardModalProps {
+  /** Whether the modal is open (accepts isOpen or open) */
+  isOpen?: boolean;
+  open?: boolean;
+  /** Modal close callback */
   onClose: () => void;
+  /** Dialog open state change handler */
+  onOpenChange?: (open: boolean) => void;
+  /** The completed challenge details */
   challenge: Pick<Challenge, "title" | "xpReward">;
-  /** The user's XP before this reward is added. */
+  /** The user's XP before this reward is added */
   previousXp: number;
+  /** Additional styling class */
+  className?: string;
 }
 
 // ===========================
@@ -95,7 +117,7 @@ function RewardCelebration({
   onClose,
   challenge,
   previousXp,
-}: Omit<ClaimRewardModalProps, "isOpen">) {
+}: Pick<ClaimRewardModalProps, "onClose" | "challenge" | "previousXp">) {
   const reduceMotion = useReducedMotion() ?? false;
   const newXp = previousXp + challenge.xpReward;
   const [chestOpened, setChestOpened] = useState(false);
@@ -116,8 +138,8 @@ function RewardCelebration({
   const ChestIcon = chestOpen ? PackageOpen : Package;
 
   return (
-    <>
-      <DialogHeader className="items-center text-center">
+    <div className="flex flex-col items-center text-center space-y-4 sm:space-y-5">
+      <DialogHeader className="items-center text-center p-0 space-y-2">
         <motion.div
           animate={
             chestOpened && !reduceMotion
@@ -125,30 +147,44 @@ function RewardCelebration({
               : { scale: 1, rotate: 0 }
           }
           transition={{ duration: 0.5 }}
-          className="relative mx-auto flex h-24 w-24 items-center justify-center rounded-3xl border border-amber-400/30 bg-amber-400/10 shadow-[0_0_40px_-8px_rgba(251,191,36,0.6)]"
+          className={cn(
+            "relative mx-auto flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl sm:rounded-3xl",
+            "border border-amber-500/30 bg-amber-500/10",
+            "shadow-[0_0_35px_-8px_rgba(251,191,36,0.4)] dark:shadow-[0_0_40px_-8px_rgba(251,191,36,0.6)]"
+          )}
         >
-          <ChestIcon className="h-12 w-12 text-amber-300" aria-hidden="true" />
+          <ChestIcon
+            className="h-10 w-10 sm:h-12 sm:w-12 text-amber-500 dark:text-amber-300 transition-colors"
+            aria-hidden="true"
+          />
         </motion.div>
 
-        <DialogTitle className="mt-4 text-xl font-bold">
+        <DialogTitle className="mt-3 sm:mt-4 text-xl sm:text-2xl font-bold tracking-tight text-foreground dark:text-foreground">
           Reward claimed!
         </DialogTitle>
-        <DialogDescription className="text-slate-400">
+        <DialogDescription className="text-xs sm:text-sm text-muted-foreground dark:text-muted-foreground max-w-xs mx-auto">
           You completed &quot;{challenge.title}&quot;.
         </DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-1">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-4 py-1.5 text-sm font-bold text-amber-400">
-          <Zap className="h-4 w-4" aria-hidden="true" />+{challenge.xpReward} XP
+      <div className="space-y-1 sm:space-y-1.5 py-1">
+        <div
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-bold",
+            "bg-amber-500/10 text-amber-600 border border-amber-500/20",
+            "dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30"
+          )}
+        >
+          <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+          <span>+{challenge.xpReward} XP</span>
         </div>
 
-        <p className="text-xs uppercase tracking-wider text-slate-500">
+        <p className="text-[11px] sm:text-xs uppercase tracking-wider font-semibold text-muted-foreground dark:text-muted-foreground mt-2">
           Total XP
         </p>
         <p
           aria-hidden="true"
-          className="text-4xl font-extrabold tabular-nums text-emerald-300"
+          className="text-3xl sm:text-4xl font-extrabold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400"
         >
           {displayedXp.toLocaleString()}
         </p>
@@ -158,13 +194,21 @@ function RewardCelebration({
         </p>
       </div>
 
-      <Button
-        onClick={onClose}
-        className="w-full bg-gradient-to-r from-amber-500 to-emerald-500 font-semibold text-black hover:from-amber-400 hover:to-emerald-400"
-      >
-        Awesome!
-      </Button>
-    </>
+      <div className="w-full pt-2">
+        <Button
+          type="button"
+          onClick={onClose}
+          className={cn(
+            "w-full py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base",
+            "bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400",
+            "text-zinc-950 shadow-md shadow-emerald-500/20 active:scale-98 transition-all cursor-pointer",
+            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          )}
+        >
+          Awesome!
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -174,18 +218,58 @@ function RewardCelebration({
 
 export function ClaimRewardModal({
   isOpen,
+  open,
   onClose,
+  onOpenChange,
   challenge,
   previousXp,
+  className,
 }: ClaimRewardModalProps) {
+  const isModalOpen = open ?? isOpen ?? false;
+
+  // Strict Escape key listener
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        onOpenChange?.(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isModalOpen, onClose, onOpenChange]);
+
   return (
     <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
+      open={isModalOpen}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+          onOpenChange?.(false);
+        }
       }}
     >
-      <DialogContent className="max-w-[calc(100%-2rem)] rounded-[28px] sm:max-w-md border border-white/10 bg-[#0B0F19]/95 p-8 text-center text-white shadow-2xl backdrop-blur-xl">
+      <DialogContent
+        data-slot="claim-reward-modal"
+        role="dialog"
+        showCloseButton={false}
+        className={cn(
+          "w-full max-w-[calc(100%-2rem)] sm:max-w-md",
+          "rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-center",
+          "bg-background text-foreground dark:bg-card dark:text-card-foreground",
+          "border border-border/80 dark:border-border/60 shadow-2xl backdrop-blur-xl",
+          "transition-all duration-200 outline-none",
+          className
+        )}
+      >
         <RewardCelebration
           onClose={onClose}
           challenge={challenge}
@@ -195,3 +279,5 @@ export function ClaimRewardModal({
     </Dialog>
   );
 }
+
+export default ClaimRewardModal;
