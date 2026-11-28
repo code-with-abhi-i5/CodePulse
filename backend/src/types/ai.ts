@@ -250,3 +250,172 @@ export interface CodeChunk {
   endLine: number;
   tokenCount: number;
 }
+
+export interface DocstringResult {
+  tsDoc: string;
+  markdownDoc: string;
+  inferredParams: Array<{ name: string; type: string; description: string }>;
+  returnType: string;
+}
+
+export interface BenchmarkMetrics {
+  modelName: string;
+  totalTokens: number;
+  durationMs: number;
+  timeToFirstTokenMs: number;
+  tokensPerSecond: number;
+  isWithinSlo: boolean;
+}
+
+export interface TieredHintResult {
+  tier: 1 | 2 | 3;
+  hintMessage: string;
+  conceptualDirection: string;
+  revealsDirectSolution: false;
+}
+
+export interface FewShotExample {
+  id: string;
+  taskType: 'sorting' | 'graph' | 'dp' | 'string' | 'general';
+  language: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  prompt: string;
+  solution: string;
+}
+
+export interface FewShotSelectionResult {
+  selectedExamples: FewShotExample[];
+  retrievalStrategy: string;
+  relevanceScore: number;
+}
+
+export interface RefactoringSmell {
+  ruleId: string;
+  severity: 'low' | 'medium' | 'high';
+  line: number;
+  description: string;
+  suggestedFix: string;
+}
+
+export interface RefactoringResult {
+  smellsDetected: RefactoringSmell[];
+  refactoredCode: string;
+  optimizationSummary: string;
+}
+
+export interface SemanticCacheEntry {
+  query: string;
+  embedding: number[];
+  response: string;
+  hitCount: number;
+  timestamp: number;
+}
+
+export interface SemanticCacheLookupResult {
+  isHit: boolean;
+  similarity: number;
+  cachedResponse?: string;
+}
+
+export interface SanitizedPrompt {
+  sanitizedText: string;
+  strippedTokens: string[];
+  injectionAttemptsDetected: number;
+}
+
+export interface AlgorithmicBreakdown {
+  problemSummary: string;
+  divergenceStep: string;
+  failedTestAnalysis: {
+    input: string;
+    expected: string;
+    actual: string;
+  };
+  recommendations: string[];
+}
+
+export interface PlagiarismComparison {
+  similarityScore: number;
+  isFlagged: boolean;
+  commonNormalizedTokens: number;
+  verdict: 'unique' | 'suspicious' | 'plagiarized';
+}
+
+export interface DifficultyCalibration {
+  predictedDifficulty: number;
+  difficultyTier: 'easy' | 'medium' | 'hard' | 'expert';
+  predictedPassRate: number;
+  complexityFactors: string[];
+}
+
+export interface EdgeCaseTestFixture {
+  testName: string;
+  inputArguments: any[];
+  expectedCondition: string;
+}
+
+export interface TruncatedContext {
+  optimizedPrompt: string;
+  totalTokensEstimate: number;
+  omittedSections: string[];
+}
+
+export interface ReviewSuggestion {
+  id: string;
+  category: 'security' | 'bug' | 'performance' | 'style';
+  confidenceScore: number;
+  line: number;
+  message: string;
+  rank?: number;
+}
+
+export interface RankedReviewSuggestions {
+  suggestions: ReviewSuggestion[];
+  highestPriorityCategory: string;
+}
+
+export interface FallbackRoutingResult {
+  routedModel: string;
+  isFallback: boolean;
+  reason: 'primary_healthy' | 'latency_spike' | 'error_circuit_open';
+}
+
+export interface SyntaxPredictionResult {
+  hasSyntaxAnomaly: boolean;
+  unclosedDelimiters: string[];
+  suggestedCompletion: string;
+}
+
+export interface TokenQuotaStatus {
+  userId: string;
+  tier: 'free' | 'pro' | 'enterprise';
+  dailyLimit: number;
+  tokensUsedToday: number;
+  isAllowed: boolean;
+}
+
+export interface SemanticSearchResult {
+  functionName: string;
+  similarityScore: number;
+  snippet: string;
+}
+
+export interface BackpressureBufferState {
+  bufferSizeBytes: number;
+  highWaterMarkBytes: number;
+  isPaused: boolean;
+  droppedTokens: number;
+}
+
+export interface CognitiveComplexityResult {
+  cyclomaticComplexity: number;
+  cognitiveComplexity: number;
+  riskTier: 'low' | 'moderate' | 'high' | 'very_high';
+}
+
+export interface FirewallInspectionResult {
+  isBlocked: boolean;
+  threatLevel: 'none' | 'suspicious' | 'high' | 'critical';
+  matchedRules: string[];
+  sanitizedPrompt: string;
+}
