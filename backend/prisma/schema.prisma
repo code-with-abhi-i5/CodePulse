@@ -253,6 +253,7 @@ model Repository {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   archivedAt    DateTime?
+  qualityScorecard RepositoryQualityScorecard?
   prMetrics     PullRequestMetric[]
   complexities  RepositoryComplexity[]
   techDebtForecasts TechnicalDebtForecast[]
@@ -1861,4 +1862,98 @@ model MatchDisputeAudit {
   @@index([matchId, createdAt])
   @@map("match_dispute_audits")
 }
+
+enum ReportScope {
+  INDIVIDUAL
+  TEAM
+  SYSTEM
+model RepositoryQualityScorecard {
+  id                 String     @id @default(uuid())
+  repositoryId       String     @unique
+  repository         Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  overallScore       Float      @default(0.0)
+  grade              String     @default("C")
+  documentationScore Float      @default(0.0)
+  testingScore       Float      @default(0.0)
+  ciCdScore          Float      @default(0.0)
+  maintenanceScore   Float      @default(0.0)
+  hasLicense         Boolean    @default(false)
+  hasCi              Boolean    @default(false)
+  testFramework      String?
+  evaluatedAt        DateTime   @default(now())
+
+  @@index([repositoryId])
+  @@map("repository_quality_scorecards")
+enum FraudAlertStatus {
+  FLAGGED
+  QUARANTINED
+  DISMISSED
+  CLAWED_BACK
 }
+
+model XpDailyAccrual {
+  id             String   @id @default(uuid())
+  userId         String
+  date           String   // YYYY-MM-DD
+  gamificationXp Int      @default(0)
+  githubXp       Int      @default(0)
+  totalXp        Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([date])
+  @@map("xp_daily_accruals")
+}
+
+model XpFraudAlert {
+  id            String           @id @default(uuid())
+  userId        String
+  flaggedAmount Int
+  source        String
+  reason        String
+  anomalyScore  Float
+  status        FraudAlertStatus @default(FLAGGED)
+  transactionId String?
+  reviewedById  String?
+  createdAt     DateTime         @default(now())
+  resolvedAt    DateTime?
+
+  @@index([userId, status])
+  @@map("xp_fraud_alerts")
+}
+
+enum ReportFormat {
+  JSON
+  CSV
+  PDF
+}
+
+enum ReportJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model ExecutiveReportJob {
+  id             String          @id @default(uuid())
+  requestedById  String
+  scope          ReportScope     @default(INDIVIDUAL)
+  targetId       String?
+  format         ReportFormat    @default(JSON)
+  status         ReportJobStatus @default(PENDING)
+  timeframeDays  Int             @default(30)
+  fileSizeBytes  Int?
+  sha256Checksum String?
+  storagePath    String?
+  downloadToken  String?         @unique
+  tokenExpiresAt DateTime?
+  errorMessage   String?
+  createdAt      DateTime        @default(now())
+  completedAt    DateTime?
+
+  @@index([requestedById, status])
+  @@index([downloadToken])
+  @@map("executive_report_jobs")
+}
+
