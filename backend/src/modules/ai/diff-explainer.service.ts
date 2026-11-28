@@ -11,8 +11,8 @@ export class DiffExplainerService {
     const space = hasMapOrSet ? 'O(N)' : 'O(1)';
 
     const markdown = `### Complexity Optimization Summary
-- **Time Complexity**: Improved to `${time}`
-- **Space Complexity**: `${space}`
+- **Time Complexity**: Improved to \`${time}\`
+- **Space Complexity**: \`${space}\`
 - **Key Insight**: Replaced nested iteration with hash lookup map, eliminating O(N^2) quadratic latency.`;
 
     return {

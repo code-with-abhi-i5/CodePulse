@@ -14,6 +14,8 @@ import {
 } from '../analytics/ownership-heatmap.service';
 import type { ParsedAstPayload, FileSymbolTable } from '../storage/rocksdb.service';
 import { DocEvaluatorService } from '../ai/doc-evaluator.service';
+import { GitTreeService } from './git-tree.service';
+import { QualityScorecardService } from './quality-scorecard.service';
 
 @Injectable()
 export class RepositoriesService {
@@ -22,6 +24,8 @@ export class RepositoriesService {
     @Optional() private readonly rocksDb?: RocksDbService,
     @Optional() private readonly docEvaluatorService?: DocEvaluatorService,
     @Optional() private readonly ownershipHeatmap?: OwnershipHeatmapService,
+    @Optional() private readonly gitTreeService?: GitTreeService,
+    @Optional() private readonly qualityScorecardService?: QualityScorecardService,
   ) {}
 
   /**
@@ -124,7 +128,8 @@ export class RepositoriesService {
   }
 
   /**
-   * Triggers an on-demand re-synchronization of a single repository.
+   * Triggers an on-demand deep re-synchronization of a single repository,
+   * refreshing git tree snapshots and recalculating the code quality scorecard.
    */
   async syncRepository(userId: string, repositoryId: string) {
     const repository = await this.prisma.repository.findFirst({
@@ -135,6 +140,26 @@ export class RepositoriesService {
       throw new NotFoundException(
         `Repository ${repositoryId} not found or does not belong to user`,
       );
+    }
+
+    let scorecard = null;
+    if (this.gitTreeService && this.qualityScorecardService) {
+      try {
+        const treeResult = await this.gitTreeService.getRepositoryTree(
+          repository.fullName,
+          'main',
+          undefined,
+          5,
+        );
+        scorecard = await this.qualityScorecardService.evaluateRepositoryQuality(
+          repositoryId,
+          treeResult.tree,
+          repository.commits,
+          repository.issues,
+        );
+      } catch {
+        // Fallback gracefully if remote inspection experiences transient rate-limits
+      }
     }
 
     const updated = await this.prisma.repository.update({
@@ -149,7 +174,58 @@ export class RepositoriesService {
       success: true,
       message: `Repository ${repository.name} synced successfully`,
       repository: updated,
+      scorecard,
     };
+  }
+
+  /**
+   * Inspects directory hierarchy and git tree for repository.
+   */
+  async getRepositoryTree(
+    userId: string,
+    repositoryId: string,
+    ref = 'main',
+    subPath?: string,
+    depth = 3,
+  ) {
+    const repository = await this.getRepositoryById(userId, repositoryId);
+    if (!this.gitTreeService) {
+      throw new NotFoundException('Git tree exploration service unavailable');
+    }
+    return this.gitTreeService.getRepositoryTree(
+      repository.fullName,
+      ref,
+      subPath,
+      depth,
+    );
+  }
+
+  /**
+   * Retrieves or computes automated code quality scorecard for repository.
+   */
+  async getQualityScorecard(userId: string, repositoryId: string) {
+    const repository = await this.getRepositoryById(userId, repositoryId);
+    if (!this.qualityScorecardService) {
+      throw new NotFoundException('Quality scorecard service unavailable');
+    }
+
+    let scorecard = await this.qualityScorecardService.getScorecard(repositoryId);
+    if (!scorecard && this.gitTreeService) {
+      const tree = await this.gitTreeService.getRepositoryTree(
+        repository.fullName,
+        'main',
+        undefined,
+        4,
+      );
+      scorecard = await this.qualityScorecardService.evaluateRepositoryQuality(
+        repositoryId,
+        tree.tree,
+        repository.commits,
+        repository.issues,
+      ) as any;
+    }
+
+    return scorecard;
   }
 
   /**
