@@ -17,18 +17,41 @@ export class VectorSearchService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Generates a 1536-dimensional semantic embedding vector simulation for queries
+   * Generates a 16-dimensional normalized semantic embedding vector for text
    */
   generateEmbedding(text: string): number[] {
     const vector = new Array(16).fill(0);
-    const words = text.toLowerCase().split(/\s+/);
+    const words = (text || '').toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return vector;
+
     for (let i = 0; i < words.length; i++) {
-      const code = words[i].charCodeAt(0) || 0;
-      vector[i % 16] += Number((code / 255).toFixed(4));
+      for (let j = 0; j < words[i].length; j++) {
+        const code = words[i].charCodeAt(j) || 0;
+        vector[(i + j) % 16] += Number((code / 255).toFixed(4));
+      }
     }
-    // Normalize vector
+    // Normalize vector to unit length
     const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0)) || 1;
     return vector.map(v => Number((v / norm).toFixed(4)));
+  }
+
+  /**
+   * Computes cosine similarity between two embedding vectors (range 0 to 1)
+   */
+  cosineSimilarity(vecA: number[], vecB: number[]): number {
+    if (!vecA || !vecB || vecA.length === 0 || vecB.length === 0) return 0;
+    const len = Math.min(vecA.length, vecB.length);
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    for (let i = 0; i < len; i++) {
+      dotProduct += vecA[i] * vecB[i];
+      normA += vecA[i] * vecA[i];
+      normB += vecB[i] * vecB[i];
+    }
+    if (normA === 0 || normB === 0) return 0;
+    const similarity = dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    return Number(Math.max(0, Math.min(1, similarity)).toFixed(4));
   }
 
   /**
