@@ -347,3 +347,75 @@ export interface DifficultyCalibration {
   predictedPassRate: number;
   complexityFactors: string[];
 }
+
+export interface EdgeCaseTestFixture {
+  testName: string;
+  inputArguments: any[];
+  expectedCondition: string;
+}
+
+export interface TruncatedContext {
+  optimizedPrompt: string;
+  totalTokensEstimate: number;
+  omittedSections: string[];
+}
+
+export interface ReviewSuggestion {
+  id: string;
+  category: 'security' | 'bug' | 'performance' | 'style';
+  confidenceScore: number;
+  line: number;
+  message: string;
+  rank?: number;
+}
+
+export interface RankedReviewSuggestions {
+  suggestions: ReviewSuggestion[];
+  highestPriorityCategory: string;
+}
+
+export interface FallbackRoutingResult {
+  routedModel: string;
+  isFallback: boolean;
+  reason: 'primary_healthy' | 'latency_spike' | 'error_circuit_open';
+}
+
+export interface SyntaxPredictionResult {
+  hasSyntaxAnomaly: boolean;
+  unclosedDelimiters: string[];
+  suggestedCompletion: string;
+}
+
+export interface TokenQuotaStatus {
+  userId: string;
+  tier: 'free' | 'pro' | 'enterprise';
+  dailyLimit: number;
+  tokensUsedToday: number;
+  isAllowed: boolean;
+}
+
+export interface SemanticSearchResult {
+  functionName: string;
+  similarityScore: number;
+  snippet: string;
+}
+
+export interface BackpressureBufferState {
+  bufferSizeBytes: number;
+  highWaterMarkBytes: number;
+  isPaused: boolean;
+  droppedTokens: number;
+}
+
+export interface CognitiveComplexityResult {
+  cyclomaticComplexity: number;
+  cognitiveComplexity: number;
+  riskTier: 'low' | 'moderate' | 'high' | 'very_high';
+}
+
+export interface FirewallInspectionResult {
+  isBlocked: boolean;
+  threatLevel: 'none' | 'suspicious' | 'high' | 'critical';
+  matchedRules: string[];
+  sanitizedPrompt: string;
+}
