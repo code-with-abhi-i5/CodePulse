@@ -54,6 +54,11 @@ import {
   GenerateChangelogRequestDto,
   ChangelogResponseDto,
 } from './dto/changelog.dto';
+import { ScaffoldSynthesizerService } from './scaffold-synthesizer.service';
+import {
+  ScaffoldFromDiagramDto,
+  ScaffoldFromDiagramResponseDto,
+} from './dto/scaffold-synthesizer.dto';
 import {
   AiPersonaDto,
   StartPracticeBattleRequestDto,
@@ -77,6 +82,7 @@ export class AiController {
     @Optional() private readonly reproSynthesizer?: ReproSynthesizerService,
     @Optional() private readonly syntheticBenchmark?: SyntheticBenchmarkService,
     @Optional() private readonly benchmarkGenerator?: BenchmarkGeneratorService,
+    @Optional() private readonly scaffoldSynthesizer?: ScaffoldSynthesizerService,
   ) {}
 
   @Post('transpile')
@@ -442,6 +448,27 @@ export class AiController {
       throw new BadRequestException('BenchmarkGeneratorService is unavailable');
     }
     return this.benchmarkGenerator.getChallengeBenchmark(challengeId);
+  }
+
+  @Post('scaffold-from-diagram')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Architecture Diagram-to-Code Scaffolding Synthesizer',
+    description:
+      'Parses Mermaid.js class diagrams or flowcharts into entity-relationship graphs and generates complete NestJS module hierarchy (Module, Controller, Service, DTOs with class-validator) and Prisma schemas with optional zip download or GitHub branch commit.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully synthesized NestJS architecture hierarchy and schema',
+    type: ScaffoldFromDiagramResponseDto,
+  })
+  async scaffoldFromDiagram(
+    @Body() dto: ScaffoldFromDiagramDto,
+  ): Promise<ScaffoldFromDiagramResponseDto> {
+    if (!this.scaffoldSynthesizer) {
+      throw new BadRequestException('ScaffoldSynthesizerService is unavailable');
+    }
+    return this.scaffoldSynthesizer.synthesizeFromDiagram(dto);
   }
 }
 
